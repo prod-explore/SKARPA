@@ -1,0 +1,102 @@
+<%- include('../partials/head') %>
+
+<div class="admin-layout">
+  <aside class="admin-sidebar">
+    <div class="admin-sidebar-brand">🧗 SKARPA<br><span>ADMIN</span></div>
+    <nav class="admin-nav">
+      <a href="/admin" class="admin-nav-link">📊 Dashboard</a>
+      <a href="/admin/classes/new" class="admin-nav-link active">➕ Nowe zajęcia</a>
+      <a href="/calendar" class="admin-nav-link" target="_blank">📅 Kalendarz</a>
+    </nav>
+    <div class="admin-sidebar-footer">
+      <form action="/auth/logout" method="POST">
+        <button type="submit" class="btn btn--outline btn--sm btn--full">Wyloguj</button>
+      </form>
+    </div>
+  </aside>
+
+  <main class="admin-main">
+    <div class="admin-topbar">
+      <h1><%= classData ? 'Edytuj zajęcia' : 'Nowe zajęcia' %></h1>
+      <a href="/admin" class="btn btn--outline">← Powrót</a>
+    </div>
+
+    <% if (typeof error !== 'undefined' && error) { %>
+      <div class="alert alert--error"><%= error %></div>
+    <% } %>
+
+    <div class="admin-form-card">
+      <form
+        action="<%= classData ? '/admin/classes/' + classData.id : '/admin/classes' %>"
+        method="POST"
+        class="admin-form"
+      >
+
+        <div class="form-row">
+          <div class="form-group form-group--wide">
+            <label class="form-label">Nazwa zajęć *</label>
+            <input type="text" name="name" class="form-input"
+                   value="<%= classData ? classData.name : '' %>"
+                   placeholder="np. Wspinaczka dla początkujących" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Kategoria</label>
+            <select name="category" class="form-input form-select">
+              <option value="mixed"  <%= (!classData || classData.category === 'mixed')   ? 'selected' : '' %>>👥 Mieszane</option>
+              <option value="kids"   <%= (classData && classData.category === 'kids')    ? 'selected' : '' %>>👶 Dzieci (7–14 lat)</option>
+              <option value="adults" <%= (classData && classData.category === 'adults')  ? 'selected' : '' %>>🧑 Dorośli (18+)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Opis (opcjonalnie)</label>
+          <textarea name="description" class="form-input form-textarea"
+                    placeholder="Krótki opis zajęć..."><%= classData ? classData.description || '' : '' %></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Data i godzina *</label>
+            <input type="datetime-local" name="startTime" class="form-input"
+                   value="<%= classData ? classData.start_time.replace(' ', 'T').slice(0,16) : '' %>"
+                   required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Czas trwania (min)</label>
+            <input type="number" name="durationMin" class="form-input"
+                   value="<%= classData ? classData.duration_min : 90 %>"
+                   min="30" max="360" placeholder="90">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Maks. liczba uczestników *</label>
+            <input type="number" name="maxSpots" class="form-input"
+                   value="<%= classData ? classData.max_spots : '' %>"
+                   min="1" max="200" placeholder="12" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Instruktor (opcjonalnie)</label>
+            <input type="text" name="instructor" class="form-input"
+                   value="<%= classData ? classData.instructor || '' : '' %>"
+                   placeholder="Imię i nazwisko instruktora">
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <a href="/admin" class="btn btn--outline">Anuluj</a>
+          <button type="submit" class="btn btn--primary btn--lg">
+            <%= classData ? 'Zapisz zmiany' : 'Dodaj zajęcia' %> →
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </main>
+</div>
+
+<script src="/js/main.js"></script>
+</body>
+</html>

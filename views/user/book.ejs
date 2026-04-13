@@ -1,0 +1,206 @@
+<%- include('../partials/head') %>
+<%- include('../partials/navbar', { user: user }) %>
+
+<div class="page-content">
+  <div class="container container--narrow">
+
+    <a href="/calendar" class="back-link">← Powrót do kalendarza</a>
+
+    <% if (classData) { %>
+      <%
+        const date = new Date(classData.start_time);
+        const dateStr = date.toLocaleDateString('pl-PL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        const timeStr = date.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
+      %>
+
+      <!-- Info o zajęciach -->
+      <div class="class-info-card">
+        <div class="class-info-header">
+          <span class="class-category-badge class-category-badge--lg">
+            <%= classData.category === 'kids' ? '👶 Zajęcia dla dzieci' : classData.category === 'adults' ? '🧑 Zajęcia dla dorosłych' : '👥 Zajęcia mieszane' %>
+          </span>
+        </div>
+        <h1 class="class-info-title"><%= classData.name %></h1>
+        <div class="class-info-meta">
+          <div class="class-info-meta-item">
+            <span class="meta-icon">📅</span>
+            <span><%= dateStr %></span>
+          </div>
+          <div class="class-info-meta-item">
+            <span class="meta-icon">⏰</span>
+            <span><%= timeStr %> (ok. <%= classData.duration_min %> minut)</span>
+          </div>
+          <% if (classData.instructor) { %>
+          <div class="class-info-meta-item">
+            <span class="meta-icon">👤</span>
+            <span>Instruktor: <%= classData.instructor %></span>
+          </div>
+          <% } %>
+          <% if (typeof spotsLeft !== 'undefined') { %>
+          <div class="class-info-meta-item">
+            <span class="meta-icon">🪑</span>
+            <span><strong><%= spotsLeft %></strong> wolnych miejsc</span>
+          </div>
+          <% } %>
+        </div>
+        <% if (classData.description) { %>
+          <p class="class-info-desc"><%= classData.description %></p>
+        <% } %>
+      </div>
+
+      <% if (typeof error !== 'undefined' && error) { %>
+        <div class="alert alert--error"><%= error %></div>
+      <% } %>
+
+      <% if (typeof notOpen !== 'undefined' && notOpen) { %>
+        <div class="locked-state">
+          <div class="locked-icon">🔒</div>
+          <h2>Zapisy jeszcze nie są otwarte</h2>
+          <p><%= error %></p>
+          <a href="/calendar" class="btn btn--primary">Wróć do kalendarza</a>
+        </div>
+
+      <% } else if (typeof full !== 'undefined' && full) { %>
+        <div class="locked-state">
+          <div class="locked-icon">😞</div>
+          <h2>Brak wolnych miejsc</h2>
+          <p>Wszystkie miejsca na te zajęcia zostały zajęte.</p>
+          <a href="/calendar" class="btn btn--primary">Znajdź inne terminy</a>
+        </div>
+
+      <% } else { %>
+        <!-- Formularz zapisu -->
+        <div class="booking-form-card">
+          <h2>Zapisz uczestników</h2>
+          <p class="booking-form-hint">
+            Możesz zapisać siebie i inne osoby w jednym kroku (max. <%= spotsLeft %> łącznie).
+          </p>
+
+          <form action="/book/<%= classData.id %>" method="POST" id="bookingForm">
+
+            <!-- Główna osoba: zalogowany użytkownik -->
+            <div class="participant-block participant-block--main">
+              <div class="participant-block-header">
+                <span class="participant-number">Osoba 1 (Ty)</span>
+                <label class="checkbox-label">
+                  <input type="checkbox" name="includeSelf" value="true" id="includeSelf" checked>
+                  <span>Zapisz mnie</span>
+                </label>
+              </div>
+              <div class="participant-main-info">
+                <span class="participant-name-badge">
+                  <%= user.first_name %> <%= user.last_name %>
+                </span>
+                <span class="participant-email"><%= user.email %></span>
+              </div>
+            </div>
+
+            <!-- Dodatkowe osoby -->
+            <div id="extraParticipants">
+              <!-- Dynamicznie dodawane przez JS -->
+            </div>
+
+            <!-- Przycisk dodania osoby -->
+            <% if (spotsLeft > 1) { %>
+            <button type="button" class="btn btn--outline btn--sm" id="addPersonBtn">
+              + Dodaj kolejną osobę
+            </button>
+            <% } %>
+
+            <!-- Podsumowanie -->
+            <div class="booking-summary" id="bookingSummary">
+              <div class="booking-summary-inner">
+                <span>Zapisujesz: <strong id="participantCount">1</strong> osob(ę/y)</span>
+                <span id="spotsWarning" class="spots-warning" style="display:none;"></span>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn--primary btn--full btn--lg">
+              Potwierdź zapis →
+            </button>
+
+            <p class="booking-terms">
+              Po zapisaniu otrzymasz potwierdzenie e-mailem.
+              Możesz odwołać zapis do 2 godzin przed zajęciami.
+            </p>
+          </form>
+        </div>
+      <% } %>
+    <% } %>
+
+  </div>
+</div>
+
+<%- include('../partials/footer') %>
+
+<script>
+const MAX_SPOTS = <%= typeof spotsLeft !== 'undefined' ? spotsLeft : 1 %>;
+let extraCount = 0;
+
+const addBtn = document.getElementById('addPersonBtn');
+const extraContainer = document.getElementById('extraParticipants');
+const countEl = document.getElementById('participantCount');
+const spotsWarn = document.getElementById('spotsWarning');
+const selfCheckbox = document.getElementById('includeSelf');
+
+function updateCount() {
+  const selfChecked = selfCheckbox ? (selfCheckbox.checked ? 1 : 0) : 0;
+  const total = selfChecked + extraCount;
+  if (countEl) countEl.textContent = total;
+
+  if (spotsWarn) {
+    if (total >= MAX_SPOTS) {
+      spotsWarn.textContent = `Maksimum ${MAX_SPOTS} miejsc`;
+      spotsWarn.style.display = 'inline';
+      if (addBtn) addBtn.style.display = 'none';
+    } else {
+      spotsWarn.style.display = 'none';
+      if (addBtn) addBtn.style.display = 'inline-flex';
+    }
+  }
+}
+
+if (addBtn) {
+  addBtn.addEventListener('click', function() {
+    const selfChecked = selfCheckbox ? (selfCheckbox.checked ? 1 : 0) : 0;
+    if (selfChecked + extraCount >= MAX_SPOTS) return;
+
+    extraCount++;
+    const idx = extraCount;
+
+    const block = document.createElement('div');
+    block.className = 'participant-block participant-block--extra';
+    block.id = `extra_${idx}`;
+    block.innerHTML = `
+      <div class="participant-block-header">
+        <span class="participant-number">Osoba ${idx + 1}</span>
+        <button type="button" class="remove-btn" onclick="removeExtra(${idx})">✕ Usuń</button>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Imię *</label>
+          <input type="text" name="extraFirstName" class="form-input" placeholder="Imię" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nazwisko *</label>
+          <input type="text" name="extraLastName" class="form-input" placeholder="Nazwisko" required>
+        </div>
+      </div>
+    `;
+    extraContainer.appendChild(block);
+    updateCount();
+  });
+}
+
+function removeExtra(idx) {
+  const el = document.getElementById(`extra_${idx}`);
+  if (el) { el.remove(); extraCount--; updateCount(); }
+}
+
+if (selfCheckbox) selfCheckbox.addEventListener('change', updateCount);
+
+updateCount();
+</script>
+<script src="/js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+<%- include('../partials/head') %>
+
+<div class="auth-page">
+  <div class="auth-side auth-side--visual">
+    <div class="auth-visual-content">
+      <a href="/" class="auth-brand">🧗 SKARPA BYTOM</a>
+      <div class="auth-visual-tagline">
+        <h2>Prawie gotowe!</h2>
+        <p>Uzupełnij swój profil, aby zapisywać się na zajęcia.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="auth-side auth-side--form">
+    <div class="auth-form-wrapper">
+      <h1 class="auth-title">Uzupełnij profil</h1>
+      <p class="auth-subtitle">Podaj swoje imię i nazwisko. Potrzebujemy ich do listy uczestników.</p>
+
+      <% if (typeof error !== 'undefined' && error) { %>
+        <div class="alert alert--error"><%= error %></div>
+      <% } %>
+
+      <form action="/profile/complete" method="POST" class="auth-form">
+        <input type="hidden" name="next" value="<%= typeof next !== 'undefined' ? next : '/dashboard' %>">
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="firstName" class="form-label">Imię *</label>
+            <input type="text" id="firstName" name="firstName" class="form-input"
+                   placeholder="Jan" required autofocus autocomplete="given-name">
+          </div>
+          <div class="form-group">
+            <label for="lastName" class="form-label">Nazwisko *</label>
+            <input type="text" id="lastName" name="lastName" class="form-input"
+                   placeholder="Kowalski" required autocomplete="family-name">
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn--primary btn--full btn--lg">
+          Zapisz i przejdź dalej →
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

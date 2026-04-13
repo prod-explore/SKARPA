@@ -1,0 +1,221 @@
+<%- include('../partials/head') %>
+
+<%- include('../partials/navbar', { user: user }) %>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg">
+    <div class="hero-rock hero-rock--1"></div>
+    <div class="hero-rock hero-rock--2"></div>
+    <div class="hero-rock hero-rock--3"></div>
+  </div>
+  <div class="hero-content">
+    <div class="hero-badge">🇪🇺 Projekt UE — Bezpłatnie</div>
+    <h1 class="hero-title">
+      Zacznij się<br>
+      <span class="hero-title--accent">wspinać</span><br>
+      za darmo
+    </h1>
+    <p class="hero-subtitle">
+      Darmowe zajęcia wspinaczkowe dla dzieci i dorosłych<br>
+      w obiekcie Skarpa Bytom. Bez doświadczenia, bez opłat.
+    </p>
+    <div class="hero-actions">
+      <a href="/calendar" class="btn btn--primary btn--lg">Zobacz terminy →</a>
+      <a href="#o-projekcie" class="btn btn--outline btn--lg">Dowiedz się więcej</a>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <span class="hero-stat-num">0 zł</span>
+        <span class="hero-stat-label">Koszt uczestnictwa</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-num">90 min</span>
+        <span class="hero-stat-label">Każde zajęcia</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-num">5+</span>
+        <span class="hero-stat-label">Lat doświadczenia</span>
+      </div>
+    </div>
+  </div>
+  <div class="hero-scroll-hint">↓</div>
+</section>
+
+
+<!-- BANER AWARYJNY — zapis przez e-mail -->
+<div class="emergency-contact-bar">
+  <div class="container">
+    <span class="emergency-icon">📧</span>
+    <span>Problemy z systemem? Zapisz się bezpośrednio przez e-mail:</span>
+    <a href="mailto:wspinanie.ue@gmail.com" class="emergency-link">wspinanie.ue@gmail.com</a>
+  </div>
+</div>
+
+<!-- SEKCJA: O PROJEKCIE -->
+<section class="section section--light" id="o-projekcie">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-tag">Dlaczego warto</span>
+      <h2>Wspinaczka dla każdego</h2>
+      <p>Projekt dofinansowany z Unii Europejskiej umożliwia bezpłatny dostęp do profesjonalnych zajęć wspinaczkowych.</p>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">🆓</div>
+        <h3>Całkowicie bezpłatnie</h3>
+        <p>Zajęcia są w 100% finansowane ze środków UE. Nie pobieramy żadnych opłat od uczestników.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">👨‍👩‍👧‍👦</div>
+        <h3>Dla całej rodziny</h3>
+        <p>Osobne grupy dla dzieci (7–14 lat) i dorosłych. Instruktorzy z certyfikatami PZA.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🎒</div>
+        <h3>Sprzęt w cenie</h3>
+        <p>Buty, uprzęże, kask — wszystko jest dostępne na miejscu. Przychodź w wygodnych ubraniach.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📅</div>
+        <h3>Regularne terminy</h3>
+        <p>Zajęcia w tygodniu i weekendy. Zapisy otwierają się 7 dni przed każdymi zajęciami.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SEKCJA: DZIECI vs DOROŚLI -->
+<section class="section section--split">
+  <div class="split-panel split-panel--kids">
+    <div class="split-content">
+      <div class="split-tag">Dla dzieci</div>
+      <h2>Zajęcia dziecięce</h2>
+      <p>Wiek 7–14 lat. Nauka podstaw wspinaczki w bezpiecznym środowisku pod okiem certyfikowanych instruktorów.</p>
+      <ul class="split-list">
+        <li>✓ Grupy max 10 osób</li>
+        <li>✓ Sprzęt dostosowany do wzrostu</li>
+        <li>✓ Elementy gier i zabaw</li>
+        <li>✓ Certyfikat ukończenia</li>
+      </ul>
+      <a href="/calendar" class="btn btn--white">Zapisz dziecko →</a>
+    </div>
+  </div>
+  <div class="split-panel split-panel--adults">
+    <div class="split-content">
+      <div class="split-tag">Dla dorosłych</div>
+      <h2>Zajęcia dla dorosłych</h2>
+      <p>Wiek 18+. Od zupełnych początkujących po zaawansowanych techniki prowadzenia.</p>
+      <ul class="split-list">
+        <li>✓ Grupy max 12 osób</li>
+        <li>✓ Różne poziomy trudności</li>
+        <li>✓ Techniki asekuracji</li>
+        <li>✓ Trening siłowy wspinaczkowy</li>
+      </ul>
+      <a href="/calendar" class="btn btn--white">Zapisz się →</a>
+    </div>
+  </div>
+</section>
+
+<!-- SEKCJA: NAJBLIŻSZE TERMINY -->
+<% if (upcomingClasses.length > 0) { %>
+<section class="section">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-tag">Zarejestruj się</span>
+      <h2>Najbliższe zajęcia</h2>
+    </div>
+
+    <div class="classes-grid">
+      <% upcomingClasses.forEach(cls => { %>
+        <%
+          const date = new Date(cls.start_time);
+          const dateStr = date.toLocaleDateString('pl-PL', { weekday: 'short', day: 'numeric', month: 'short' });
+          const timeStr = date.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
+          const taken = cls.taken_spots || 0;
+          const left = cls.max_spots - taken;
+          const isOpen = isBookingOpen(cls.start_time);
+          const openDate = getBookingOpenDate(cls.start_time);
+        %>
+        <div class="class-card <%= cls.category %>">
+          <div class="class-card-header">
+            <span class="class-category-badge">
+              <%= cls.category === 'kids' ? '👶 Dzieci' : cls.category === 'adults' ? '🧑 Dorośli' : '👥 Mieszane' %>
+            </span>
+            <span class="class-spots <%= left <= 3 ? 'class-spots--low' : '' %>">
+              <%= left > 0 ? `${left} miejsc` : 'Brak miejsc' %>
+            </span>
+          </div>
+          <h3 class="class-card-name"><%= cls.name %></h3>
+          <div class="class-card-meta">
+            <span>📅 <%= dateStr %></span>
+            <span>⏰ <%= timeStr %></span>
+            <% if (cls.instructor) { %><span>👤 <%= cls.instructor %></span><% } %>
+          </div>
+          <div class="class-card-action">
+            <% if (!isOpen) { %>
+              <span class="class-locked">🔒 Zapisy od <%= openDate.toLocaleDateString('pl-PL', {day:'numeric', month:'short'}) %></span>
+            <% } else if (left <= 0) { %>
+              <span class="class-full">Brak miejsc</span>
+            <% } else { %>
+              <a href="/book/<%= cls.id %>" class="btn btn--primary btn--sm">Zapisz się</a>
+            <% } %>
+          </div>
+        </div>
+      <% }); %>
+    </div>
+
+    <div style="text-align:center;margin-top:2rem;">
+      <a href="/calendar" class="btn btn--outline">Wszystkie terminy →</a>
+    </div>
+  </div>
+</section>
+<% } %>
+
+<!-- SEKCJA: MAPA -->
+<section class="section section--map">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-tag">Jak dotrzeć</span>
+      <h2>Znajdź nas w Bytomiu</h2>
+    </div>
+    <div class="map-wrapper">
+      <iframe
+        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2545.0!2d18.9140!3d50.3498!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2sBytom!5e0!3m2!1spl!2spl!4v1"
+        width="100%" height="400" style="border:0;border-radius:12px;"
+        allowfullscreen="" loading="lazy"
+        referrerpolicy="no-referrer-when-downgrade"
+        title="Mapa — Skarpa Bytom">
+      </iframe>
+      <div class="map-info-card">
+        <h4>📍 Skarpa Bytom</h4>
+        <p>ul. Wspinaczkowa 1<br>41-900 Bytom</p>
+        <p>🚗 Parking bezpłatny<br>🚌 Autobus nr 12, 34</p>
+        <a href="https://maps.google.com/?q=Bytom+Wspinaczka" target="_blank" rel="noopener" class="btn btn--primary btn--sm">
+          Nawiguj →
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="section section--cta">
+  <div class="container">
+    <div class="cta-box">
+      <div class="cta-content">
+        <h2>Gotowy na pierwsze wejście?</h2>
+        <p>Rejestracja zajmuje 30 sekund. Wystarczy e-mail.</p>
+      </div>
+      <div class="cta-actions">
+        <a href="/login" class="btn btn--white btn--lg">Zarejestruj się →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<%- include('../partials/footer') %>
+<script src="/js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+<nav class="navbar">
+  <div class="nav-container">
+    <a href="/" class="nav-brand">
+      <span class="nav-brand-icon">🧗</span>
+      <span class="nav-brand-text">SKARPA <span>BYTOM</span></span>
+    </a>
+
+    <button class="nav-toggle" id="navToggle" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+
+    <div class="nav-menu" id="navMenu">
+      <a href="/" class="nav-link">Start</a>
+      <a href="/calendar" class="nav-link">Kalendarz</a>
+      <% if (typeof user !== 'undefined' && user) { %>
+        <a href="/dashboard" class="nav-link">Mój panel</a>
+        <% if (user.is_admin) { %>
+          <a href="/admin" class="nav-link nav-link--admin">⚙ Admin</a>
+        <% } %>
+        <form action="/auth/logout" method="POST" style="display:inline;">
+          <button type="submit" class="nav-link nav-link--btn">Wyloguj</button>
+        </form>
+      <% } else { %>
+        <a href="/login" class="nav-link nav-cta">Zaloguj się</a>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- Pasek UE -->
+  <div class="eu-bar">
+    <div class="eu-bar-inner">
+      <span class="eu-flag">🇪🇺</span>
+      <span>Projekt dofinansowany ze środków Unii Europejskiej</span>
+    </div>
+  </div>
+</nav>
+
+<script>
+  document.getElementById('navToggle').addEventListener('click', function() {
+    document.getElementById('navMenu').classList.toggle('active');
+    this.classList.toggle('active');
+  });
+</script>

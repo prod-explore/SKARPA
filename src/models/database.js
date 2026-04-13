@@ -1,0 +1,281 @@
+/**
+ * database.js — Inicjalizacja bazy danych SQLite i modele danych
+ * Używamy better-sqlite3 (synchroniczny, idealny do Dockera bez zewnętrznych usług)
+ */
+
+const Database = require('better-sqlite3');
+const path = require('path');
+const fs = require('fs');
+
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, '../../data/skarpa.db');
+
+// Upewnij się, że katalog danych istnieje
+const dbDir = path.dirname(DB_PATH);
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
+
+let db;
+
+/**
+ * Inicjalizuje połączenie z bazą i tworzy tabele jeśli nie istnieją
+ */
+function initDatabase() {
+  db = new Database(DB_PATH);
+
+  // Włącz WAL mode dla lepszej wydajności przy równoczesnych odczytach
+  db.pragma('journal_mode = WAL');
+  db.pragma('foreign_keys = ON');
+
+  db.exec(`
+    -- Tabela użytkowników
+    CREATE TABLE IF NOT EXISTS users (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      email       TEXT    UNIQUE NOT NULL,
+      first_name  TEXT,
+      last_name   TEXT,
+      is_admin    INTEGER DEFAULT 0,
+      created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+      last_login  DATETIME
+    );
+
+    -- Tabela tokenów magic link (jednorazowe, wygasające)
+    CREATE TABLE IF NOT EXISTS magic_tokens (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id    INTEGER NOT NULL,
+      token      TEXT    UNIQUE NOT NULL,
+      expires_at DATETIME NOT NULL,
+      used       INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    -- Tabela zajęć
+    CREATE TABLE IF NOT EXISTS classes (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      name         TEXT    NOT NULL,
+      description  TEXT,
+      start_time   DATETIME NOT NULL,
+      duration_min INTEGER DEFAULT 90,
+      max_spots    INTEGER NOT NULL,
+      instructor   TEXT,
+      category     TEXT    DEFAULT 'mixed',
+      created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
+      is_cancelled INTEGER DEFAULT 0
+    );
+
+    -- Tabela rezerwacji (jedna rezerwacja = jeden "zapis" przez użytkownika)
+    CREATE TABLE IF NOT EXISTS bookings (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      class_id   INTEGER NOT NULL,
+      user_id    INTEGER NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(class_id, user_id),
+      FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id)  REFERENCES users(id)   ON DELETE CASCADE
+    );
+
+    -- Tabela uczestników (booking może zawierać wiele osób)
+    CREATE TABLE IF NOT EXISTS participants (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      booking_id INTEGER NOT NULL,
+      first_name TEXT    NOT NULL,
+      last_name  TEXT    NOT NULL,
+      is_main    INTEGER DEFAULT 0,
+      FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE
+    );
+
+    -- Indeksy dla wydajności
+    CREATE INDEX IF NOT EXISTS idx_classes_start_time ON classes(start_time);
+    CREATE INDEX IF NOT EXISTS idx_bookings_class_id  ON bookings(class_id);
+    CREATE INDEX IF NOT EXISTS idx_bookings_user_id   ON bookings(user_id);
+    CREATE INDEX IF NOT EXISTS idx_magic_tokens_token ON magic_tokens(token);
+  `);
+
+  console.log('✅ Baza danych SQLite zainicjalizowana:', DB_PATH);
+  return db;
+}
+
+function getDb() {
+  if (!db) throw new Error('Baza danych nie została zainicjalizowana');
+  return db;
+}
+
+// ============================================================
+// MODELE — czyste funkcje operujące na bazie
+// ============================================================
+
+const UserModel = {
+  findByEmail: (email) =>
+    getDb().prepare('SELECT * FROM users WHERE email = ?').get(email),
+
+  findById: (id) =>
+    getDb().prepare('SELECT * FROM users WHERE id = ?').get(id),
+
+  create: (email, firstName, lastName) =>
+    getDb().prepare(
+      'INSERT INTO users (email, first_name, last_name) VALUES (?, ?, ?)'
+    ).run(email, firstName, lastName),
+
+  updateProfile: (id, firstName, lastName) =>
+    getDb().prepare(
+      'UPDATE users SET first_name = ?, last_name = ? WHERE id = ?'
+    ).run(firstName, lastName, id),
+
+  updateLastLogin: (id) =>
+    getDb().prepare(
+      'UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?'
+    ).run(id),
+
+  getOrCreate: (email) => {
+    const existing = UserModel.findByEmail(email);
+    if (existing) return { user: existing, isNew: false };
+    const result = UserModel.create(email, null, null);
+    return { user: UserModel.findById(result.lastInsertRowid), isNew: true };
+  }
+};
+
+const MagicTokenModel = {
+  create: (userId, token, expiresAt) =>
+    getDb().prepare(
+      'INSERT INTO magic_tokens (user_id, token, expires_at) VALUES (?, ?, ?)'
+    ).run(userId, token, expiresAt),
+
+  findValid: (token) =>
+    getDb().prepare(`
+      SELECT mt.*, u.email, u.first_name, u.last_name
+      FROM magic_tokens mt
+      JOIN users u ON mt.user_id = u.id
+      WHERE mt.token = ? AND mt.used = 0 AND mt.expires_at > CURRENT_TIMESTAMP
+    `).get(token),
+
+  markUsed: (token) =>
+    getDb().prepare('UPDATE magic_tokens SET used = 1 WHERE token = ?').run(token),
+
+  cleanExpired: () =>
+    getDb().prepare(
+      'DELETE FROM magic_tokens WHERE expires_at < CURRENT_TIMESTAMP OR used = 1'
+    ).run()
+};
+
+const ClassModel = {
+  getAll: () =>
+    getDb().prepare(`
+      SELECT c.*,
+        (SELECT COUNT(DISTINCT b.id) FROM bookings b WHERE b.class_id = c.id) as booking_count,
+        (SELECT COALESCE(SUM(
+          (SELECT COUNT(*) FROM participants p WHERE p.booking_id = b2.id)
+        ), 0) FROM bookings b2 WHERE b2.class_id = c.id) as participants_count
+      FROM classes c
+      ORDER BY c.start_time ASC
+    `).all(),
+
+  getUpcoming: () =>
+    getDb().prepare(`
+      SELECT c.*,
+        (SELECT COALESCE(SUM(
+          (SELECT COUNT(*) FROM participants p WHERE p.booking_id = b.id)
+        ), 0) FROM bookings b WHERE b.class_id = c.id) as taken_spots
+      FROM classes c
+      WHERE c.start_time > CURRENT_TIMESTAMP AND c.is_cancelled = 0
+      ORDER BY c.start_time ASC
+    `).all(),
+
+  getById: (id) =>
+    getDb().prepare(`
+      SELECT c.*,
+        (SELECT COALESCE(SUM(
+          (SELECT COUNT(*) FROM participants p WHERE p.booking_id = b.id)
+        ), 0) FROM bookings b WHERE b.class_id = c.id) as taken_spots
+      FROM classes c WHERE c.id = ?
+    `).get(id),
+
+  create: (data) =>
+    getDb().prepare(`
+      INSERT INTO classes (name, description, start_time, duration_min, max_spots, instructor, category)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(data.name, data.description, data.startTime, data.durationMin || 90,
+           data.maxSpots, data.instructor, data.category || 'mixed'),
+
+  update: (id, data) =>
+    getDb().prepare(`
+      UPDATE classes SET name=?, description=?, start_time=?, duration_min=?,
+        max_spots=?, instructor=?, category=? WHERE id=?
+    `).run(data.name, data.description, data.startTime, data.durationMin,
+           data.maxSpots, data.instructor, data.category, id),
+
+  cancel: (id) =>
+    getDb().prepare('UPDATE classes SET is_cancelled = 1 WHERE id = ?').run(id),
+
+  delete: (id) =>
+    getDb().prepare('DELETE FROM classes WHERE id = ?').run(id)
+};
+
+const BookingModel = {
+  findByUserAndClass: (userId, classId) =>
+    getDb().prepare(
+      'SELECT * FROM bookings WHERE user_id = ? AND class_id = ?'
+    ).get(userId, classId),
+
+  getParticipantsCount: (classId) => {
+    const row = getDb().prepare(`
+      SELECT COALESCE(SUM(
+        (SELECT COUNT(*) FROM participants p WHERE p.booking_id = b.id)
+      ), 0) as total
+      FROM bookings b WHERE b.class_id = ?
+    `).get(classId);
+    return row ? row.total : 0;
+  },
+
+  createWithParticipants: (userId, classId, participants) => {
+    const insert = getDb().transaction(() => {
+      const booking = getDb().prepare(
+        'INSERT INTO bookings (class_id, user_id) VALUES (?, ?)'
+      ).run(classId, userId);
+
+      const bookingId = booking.lastInsertRowid;
+
+      const insertParticipant = getDb().prepare(
+        'INSERT INTO participants (booking_id, first_name, last_name, is_main) VALUES (?, ?, ?, ?)'
+      );
+
+      for (let i = 0; i < participants.length; i++) {
+        insertParticipant.run(bookingId, participants[i].firstName,
+                              participants[i].lastName, i === 0 ? 1 : 0);
+      }
+
+      return bookingId;
+    });
+    return insert();
+  },
+
+  getByClass: (classId) =>
+    getDb().prepare(`
+      SELECT b.id as booking_id, b.created_at, u.email, u.first_name as user_first, u.last_name as user_last
+      FROM bookings b
+      JOIN users u ON b.user_id = u.id
+      WHERE b.class_id = ?
+      ORDER BY b.created_at ASC
+    `).all(classId),
+
+  getParticipantsByBooking: (bookingId) =>
+    getDb().prepare(
+      'SELECT * FROM participants WHERE booking_id = ? ORDER BY is_main DESC'
+    ).all(bookingId),
+
+  cancelByUser: (userId, classId) =>
+    getDb().prepare(
+      'DELETE FROM bookings WHERE user_id = ? AND class_id = ?'
+    ).run(userId, classId),
+
+  getUserBookings: (userId) =>
+    getDb().prepare(`
+      SELECT b.*, c.name, c.start_time, c.duration_min, c.instructor, c.category
+      FROM bookings b
+      JOIN classes c ON b.class_id = c.id
+      WHERE b.user_id = ?
+      ORDER BY c.start_time ASC
+    `).all(userId)
+};
+
+module.exports = { initDatabase, getDb, UserModel, MagicTokenModel, ClassModel, BookingModel };

@@ -1,0 +1,159 @@
+<%- include('../partials/head') %>
+
+<div class="admin-layout">
+
+  <!-- Sidebar -->
+  <aside class="admin-sidebar">
+    <div class="admin-sidebar-brand">🧗 SKARPA<br><span>ADMIN</span></div>
+    <nav class="admin-nav">
+      <a href="/admin" class="admin-nav-link active">📊 Dashboard</a>
+      <a href="/admin/classes/new" class="admin-nav-link">➕ Nowe zajęcia</a>
+      <a href="/calendar" class="admin-nav-link" target="_blank">📅 Kalendarz (widok)</a>
+    </nav>
+    <div class="admin-sidebar-footer">
+      <div class="admin-user-info">
+        <span>👤 <%= user.email %></span>
+      </div>
+      <form action="/auth/logout" method="POST">
+        <button type="submit" class="btn btn--outline btn--sm btn--full">Wyloguj</button>
+      </form>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="admin-main">
+    <div class="admin-topbar">
+      <h1>Panel Administracyjny</h1>
+      <a href="/admin/classes/new" class="btn btn--primary">+ Nowe zajęcia</a>
+    </div>
+
+    <% if (typeof success !== 'undefined' && success) { %>
+      <div class="alert alert--success"><%= success %></div>
+    <% } %>
+    <% if (typeof error !== 'undefined' && error) { %>
+      <div class="alert alert--error"><%= error %></div>
+    <% } %>
+
+    <!-- Statystyki -->
+    <div class="admin-stats">
+      <div class="admin-stat-card">
+        <div class="admin-stat-num"><%= stats.upcomingCount %></div>
+        <div class="admin-stat-label">Nadchodzące zajęcia</div>
+      </div>
+      <div class="admin-stat-card">
+        <div class="admin-stat-num"><%= stats.totalClasses %></div>
+        <div class="admin-stat-label">Wszystkie zajęcia</div>
+      </div>
+      <div class="admin-stat-card">
+        <div class="admin-stat-num"><%= stats.totalParticipants %></div>
+        <div class="admin-stat-label">Łącznie uczestników</div>
+      </div>
+    </div>
+
+    <!-- Info o manualnych zapisach -->
+    <div class="admin-info-box">
+      <div class="admin-info-icon">📧</div>
+      <div>
+        <strong>Manualne zapisy awaryjne</strong>
+        <p>
+          W przypadku problemów technicznych z systemem, uczestnicy mogą zapisywać się
+          bezpośrednio przez e-mail:
+          <a href="mailto:wspinanie.ue@gmail.com" class="admin-email-link">wspinanie.ue@gmail.com</a>.
+          Informacja ta jest widoczna na stronie głównej oraz w kalendarzu.
+        </p>
+      </div>
+    </div>
+
+    <!-- Tabela zajęć -->
+    <div class="admin-section">
+      <h2>Wszystkie zajęcia</h2>
+
+      <% if (classes.length === 0) { %>
+        <div class="empty-state">
+          <p>Brak zajęć. <a href="/admin/classes/new">Dodaj pierwsze.</a></p>
+        </div>
+      <% } else { %>
+        <div class="admin-table-wrapper">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Nazwa</th>
+                <th>Data i godzina</th>
+                <th>Kategoria</th>
+                <th>Miejsca</th>
+                <th>Uczestnicy</th>
+                <th>Status</th>
+                <th>Akcje</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% classes.forEach(cls => { %>
+                <%
+                  const date = new Date(cls.start_time);
+                  const dateStr = date.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short', year: 'numeric' });
+                  const timeStr = date.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
+                  const isPast = date < new Date();
+                  const taken = cls.participants_count || 0;
+                  const pct = Math.round(taken / cls.max_spots * 100);
+                %>
+                <tr class="<%= cls.is_cancelled ? 'row--cancelled' : isPast ? 'row--past' : '' %>">
+                  <td>
+                    <strong><%= cls.name %></strong>
+                    <% if (cls.instructor) { %><br><small>👤 <%= cls.instructor %></small><% } %>
+                  </td>
+                  <td><%= dateStr %><br><small><%= timeStr %></small></td>
+                  <td>
+                    <span class="badge-cat badge-cat--<%= cls.category %>">
+                      <%= cls.category === 'kids' ? 'Dzieci' : cls.category === 'adults' ? 'Dorośli' : 'Mieszane' %>
+                    </span>
+                  </td>
+                  <td><%= cls.max_spots %></td>
+                  <td>
+                    <div class="mini-bar-wrap">
+                      <div class="mini-bar">
+                        <div class="mini-bar-fill" style="width:<%= pct %>%"></div>
+                      </div>
+                      <span><%= taken %>/<%= cls.max_spots %></span>
+                    </div>
+                  </td>
+                  <td>
+                    <% if (cls.is_cancelled) { %>
+                      <span class="badge badge--cancelled">Odwołane</span>
+                    <% } else if (isPast) { %>
+                      <span class="badge badge--past">Zakończone</span>
+                    <% } else { %>
+                      <span class="badge badge--active">Aktywne</span>
+                    <% } %>
+                  </td>
+                  <td class="admin-actions">
+                    <a href="/admin/classes/<%= cls.id %>/attendance" class="btn btn--outline btn--xs">
+                      👥 Lista
+                    </a>
+                    <a href="/admin/classes/<%= cls.id %>/edit" class="btn btn--outline btn--xs">
+                      ✏️ Edytuj
+                    </a>
+                    <% if (!cls.is_cancelled && !isPast) { %>
+                    <form action="/admin/classes/<%= cls.id %>/cancel" method="POST" style="display:inline;"
+                          onsubmit="return confirm('Odwołać te zajęcia?')">
+                      <button type="submit" class="btn btn--warning btn--xs">⚠️ Odwołaj</button>
+                    </form>
+                    <% } %>
+                    <form action="/admin/classes/<%= cls.id %>/delete" method="POST" style="display:inline;"
+                          onsubmit="return confirm('Usunąć te zajęcia? Tej operacji nie można cofnąć.')">
+                      <button type="submit" class="btn btn--danger btn--xs">🗑</button>
+                    </form>
+                  </td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </div>
+
+  </main>
+</div>
+
+<script src="/js/main.js"></script>
+</body>
+</html>

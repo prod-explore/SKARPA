@@ -1,0 +1,131 @@
+<%- include('../partials/head') %>
+<%- include('../partials/navbar', { user: user }) %>
+
+<div class="dashboard">
+  <div class="container">
+
+    <!-- Header -->
+    <div class="dashboard-header">
+      <div>
+        <h1>Cześć, <%= user.first_name %>! 👋</h1>
+        <p class="dashboard-email"><%= user.email %></p>
+      </div>
+      <a href="/calendar" class="btn btn--primary">+ Zapisz się na zajęcia</a>
+    </div>
+
+    <!-- Moje zapisy -->
+    <section class="dashboard-section">
+      <h2 class="dashboard-section-title">Moje zapisy</h2>
+
+      <% if (bookings.length === 0) { %>
+        <div class="empty-state">
+          <div class="empty-state-icon">🧗</div>
+          <h3>Nie masz jeszcze żadnych zapisów</h3>
+          <p>Sprawdź dostępne terminy i zapisz się na pierwsze zajęcia.</p>
+          <a href="/calendar" class="btn btn--primary">Zobacz kalendarz →</a>
+        </div>
+      <% } else { %>
+        <div class="bookings-list">
+          <% bookings.forEach(b => { %>
+            <%
+              const date = new Date(b.start_time);
+              const dateStr = date.toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' });
+              const timeStr = date.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
+              const isPast = date < new Date();
+              const hoursLeft = (date - new Date()) / (1000 * 60 * 60);
+            %>
+            <div class="booking-card <%= isPast ? 'booking-card--past' : '' %>">
+              <div class="booking-card-left">
+                <div class="booking-date-block">
+                  <span class="booking-day"><%= date.getDate() %></span>
+                  <span class="booking-month"><%= date.toLocaleDateString('pl-PL', { month: 'short' }).replace('.','') %></span>
+                </div>
+              </div>
+              <div class="booking-card-body">
+                <h3 class="booking-class-name"><%= b.name %></h3>
+                <div class="booking-meta">
+                  <span>⏰ <%= timeStr %></span>
+                  <span>⏱ <%= b.duration_min %> min</span>
+                  <% if (b.instructor) { %><span>👤 <%= b.instructor %></span><% } %>
+                </div>
+                <div class="booking-participants">
+                  <strong>Uczestnicy:</strong>
+                  <% b.participants.forEach(p => { %>
+                    <span class="participant-chip"><%= p.first_name %> <%= p.last_name %><% if (p.is_main) { %> ★<% } %></span>
+                  <% }); %>
+                </div>
+              </div>
+              <div class="booking-card-action">
+                <% if (isPast) { %>
+                  <span class="badge badge--past">Zakończone</span>
+                <% } else if (hoursLeft < 2) { %>
+                  <span class="badge badge--soon">Za < 2h</span>
+                <% } else { %>
+                  <form action="/cancel/<%= b.class_id %>" method="POST"
+                        onsubmit="return confirm('Czy na pewno chcesz odwołać zapis?')">
+                    <button type="submit" class="btn btn--danger btn--sm">Odwołaj</button>
+                  </form>
+                <% } %>
+              </div>
+            </div>
+          <% }); %>
+        </div>
+      <% } %>
+    </section>
+
+    <!-- Dostępne zajęcia -->
+    <section class="dashboard-section">
+      <h2 class="dashboard-section-title">Dostępne terminy</h2>
+
+      <% const availableClasses = classes.filter(c => !c.userBooked); %>
+      <% if (availableClasses.length === 0) { %>
+        <div class="empty-state">
+          <div class="empty-state-icon">📅</div>
+          <h3>Brak dostępnych terminów</h3>
+          <p>Zapisałeś się na wszystkie dostępne zajęcia lub nie ma nowych terminów.</p>
+        </div>
+      <% } else { %>
+        <div class="classes-grid">
+          <% availableClasses.forEach(cls => { %>
+            <%
+              const date = new Date(cls.start_time);
+              const dateStr = date.toLocaleDateString('pl-PL', { weekday: 'short', day: 'numeric', month: 'short' });
+              const timeStr = date.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
+              const left = cls.max_spots - (cls.taken_spots || 0);
+            %>
+            <div class="class-card <%= cls.category %>">
+              <div class="class-card-header">
+                <span class="class-category-badge">
+                  <%= cls.category === 'kids' ? '👶 Dzieci' : cls.category === 'adults' ? '🧑 Dorośli' : '👥 Mieszane' %>
+                </span>
+                <span class="class-spots <%= left <= 3 ? 'class-spots--low' : '' %>">
+                  <%= left > 0 ? `${left} miejsc` : 'Brak' %>
+                </span>
+              </div>
+              <h3 class="class-card-name"><%= cls.name %></h3>
+              <div class="class-card-meta">
+                <span>📅 <%= dateStr %></span>
+                <span>⏰ <%= timeStr %></span>
+              </div>
+              <div class="class-card-action">
+                <% if (!cls.bookingOpen) { %>
+                  <span class="class-locked">🔒 Zapisy od <%= cls.bookingOpenDate.toLocaleDateString('pl-PL', {day:'numeric', month:'short'}) %></span>
+                <% } else if (cls.isFull) { %>
+                  <span class="class-full">Brak miejsc</span>
+                <% } else { %>
+                  <a href="/book/<%= cls.id %>" class="btn btn--primary btn--sm">Zapisz się</a>
+                <% } %>
+              </div>
+            </div>
+          <% }); %>
+        </div>
+      <% } %>
+    </section>
+
+  </div>
+</div>
+
+<%- include('../partials/footer') %>
+<script src="/js/main.js"></script>
+</body>
+</html>

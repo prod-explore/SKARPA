@@ -1,0 +1,154 @@
+<%- include('../partials/head') %>
+<%- include('../partials/navbar', { user: user }) %>
+
+<div class="page-content">
+  <div class="container">
+
+    <div class="page-header">
+      <h1>Kalendarz zajęć</h1>
+      <p>Poniżej znajdziesz wszystkie nadchodzące zajęcia. Zapisy otwierają się <strong>7 dni przed</strong> każdymi zajęciami.</p>
+    </div>
+
+
+    <!-- Awaryjny kontakt e-mail -->
+    <div class="emergency-contact-bar">
+      <span class="emergency-icon">📧</span>
+      <span>Problemy z systemem? Zapisz się bezpośrednio przez e-mail:</span>
+      <a href="mailto:wspinanie.ue@gmail.com" class="emergency-link">wspinanie.ue@gmail.com</a>
+    </div>
+
+    <!-- Legenda -->
+    <div class="calendar-legend">
+      <span class="legend-item"><span class="legend-dot legend-dot--open"></span> Zapisy otwarte</span>
+      <span class="legend-item"><span class="legend-dot legend-dot--locked"></span> Zapisy wkrótce</span>
+      <span class="legend-item"><span class="legend-dot legend-dot--full"></span> Brak miejsc</span>
+    </div>
+
+    <!-- Filtry kategorii -->
+    <div class="category-filters">
+      <button class="filter-btn active" data-filter="all">Wszystkie</button>
+      <button class="filter-btn" data-filter="kids">👶 Dzieci</button>
+      <button class="filter-btn" data-filter="adults">🧑 Dorośli</button>
+      <button class="filter-btn" data-filter="mixed">👥 Mieszane</button>
+    </div>
+
+    <% if (classes.length === 0) { %>
+      <div class="empty-state">
+        <div class="empty-state-icon">📅</div>
+        <h3>Brak nadchodzących zajęć</h3>
+        <p>Zaglądaj regularnie — nowe terminy są dodawane na bieżąco.</p>
+      </div>
+    <% } else { %>
+
+      <div class="calendar-list" id="calendarList">
+        <%
+          // Grupuj zajęcia po miesiącu
+          let currentMonth = null;
+        %>
+        <% classes.forEach(cls => { %>
+          <%
+            const date = new Date(cls.start_time);
+            const monthKey = date.toLocaleDateString('pl-PL', { year: 'numeric', month: 'long' });
+            const dateStr = date.toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' });
+            const timeStr = date.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
+            const left = cls.max_spots - (cls.taken_spots || 0);
+          %>
+
+          <% if (monthKey !== currentMonth) { %>
+            <% currentMonth = monthKey; %>
+            <div class="calendar-month-header"><%= monthKey %></div>
+          <% } %>
+
+          <div class="calendar-row <%= cls.category %>"
+               data-category="<%= cls.category %>"
+               data-open="<%= cls.bookingOpen %>"
+               data-full="<%= cls.isFull %>">
+
+            <div class="cal-date">
+              <span class="cal-day"><%= date.getDate() %></span>
+              <span class="cal-weekday"><%= date.toLocaleDateString('pl-PL', { weekday: 'short' }) %></span>
+            </div>
+
+            <div class="cal-status-bar">
+              <span class="cal-status-dot
+                <%= cls.bookingOpen && !cls.isFull ? 'status-open' : !cls.bookingOpen ? 'status-locked' : 'status-full' %>">
+              </span>
+            </div>
+
+            <div class="cal-details">
+              <h3 class="cal-name"><%= cls.name %></h3>
+              <div class="cal-meta">
+                <span>⏰ <%= timeStr %></span>
+                <span>⏱ <%= cls.duration_min %> min</span>
+                <% if (cls.instructor) { %><span>👤 <%= cls.instructor %></span><% } %>
+                <span class="cal-category-tag">
+                  <%= cls.category === 'kids' ? '👶 Dzieci' : cls.category === 'adults' ? '🧑 Dorośli' : '👥 Mieszane' %>
+                </span>
+              </div>
+            </div>
+
+            <div class="cal-spots">
+              <div class="spots-bar-wrap">
+                <div class="spots-bar">
+                  <div class="spots-bar-fill" style="width: <%= Math.round((cls.taken_spots || 0) / cls.max_spots * 100) %>%"></div>
+                </div>
+                <span class="spots-label <%= left <= 3 ? 'spots-label--low' : '' %>">
+                  <%= left > 0 ? `${left}/${cls.max_spots}` : 'Brak' %>
+                </span>
+              </div>
+            </div>
+
+            <div class="cal-action">
+              <% if (!cls.bookingOpen) { %>
+                <div class="cal-locked-info">
+                  <span class="cal-lock-icon">🔒</span>
+                  <span class="cal-lock-text">
+                    Zapisy od<br>
+                    <%= cls.bookingOpenDate.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' }) %>
+                  </span>
+                </div>
+              <% } else if (cls.isFull) { %>
+                <span class="badge badge--full">Brak miejsc</span>
+              <% } else if (user) { %>
+                <a href="/book/<%= cls.id %>" class="btn btn--primary btn--sm">Zapisz się</a>
+              <% } else { %>
+                <a href="/login?next=/book/<%= cls.id %>" class="btn btn--primary btn--sm">Zaloguj się</a>
+              <% } %>
+            </div>
+
+          </div>
+        <% }); %>
+      </div>
+
+    <% } %>
+
+    <% if (!user) { %>
+    <div class="calendar-cta-hint">
+      <p>🔑 <strong>Chcesz się zapisać?</strong> <a href="/login">Zaloguj się</a> — to zajmuje 30 sekund, potrzebujesz tylko e-maila.</p>
+    </div>
+    <% } %>
+
+  </div>
+</div>
+
+<%- include('../partials/footer') %>
+
+<script>
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    const filter = this.dataset.filter;
+    document.querySelectorAll('.calendar-row').forEach(row => {
+      if (filter === 'all' || row.dataset.category === filter) {
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+      }
+    });
+  });
+});
+</script>
+<script src="/js/main.js"></script>
+</body>
+</html>

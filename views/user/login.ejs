@@ -1,0 +1,84 @@
+<%- include('../partials/head') %>
+
+<div class="auth-page">
+  <div class="auth-side auth-side--visual">
+    <div class="auth-visual-content">
+      <a href="/" class="auth-brand">🧗 SKARPA BYTOM</a>
+      <div class="auth-visual-tagline">
+        <h2>Wspinaj się<br>za darmo</h2>
+        <p>Projekt dofinansowany z funduszy Unii Europejskiej</p>
+      </div>
+      <div class="auth-eu-badge">
+        <span>🇪🇺</span>
+        <span>Finansowane z UE</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="auth-side auth-side--form">
+    <div class="auth-form-wrapper">
+      <a href="/" class="auth-back">← Wróć na stronę główną</a>
+
+      <h1 class="auth-title">Zaloguj się</h1>
+      <p class="auth-subtitle">Wyślemy Ci jednorazowy link na podany adres e-mail. Bez hasła.</p>
+
+      <% if (typeof error !== 'undefined' && error) { %>
+        <div class="alert alert--error"><%= error %></div>
+      <% } %>
+
+      <% if (typeof success !== 'undefined' && success) { %>
+        <div class="alert alert--success">
+          <div class="alert-icon">📧</div>
+          <div>
+            <strong>Link wysłany!</strong><br>
+            <%= success %>
+          </div>
+        </div>
+      <% } %>
+
+      <% if (!(typeof success !== 'undefined' && success)) { %>
+      <form action="/auth/request" method="POST" class="auth-form">
+        <input type="hidden" name="next" value="<%= typeof next !== 'undefined' ? next : '/dashboard' %>">
+
+        <div class="form-group">
+          <label for="email" class="form-label">Adres e-mail</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            class="form-input"
+            placeholder="twoj@email.pl"
+            required
+            autocomplete="email"
+            autofocus
+          >
+        </div>
+
+        <button type="submit" class="btn btn--primary btn--full btn--lg">
+          Wyślij link logowania →
+        </button>
+
+        <p class="auth-note">
+          Pierwsze logowanie? Podaj e-mail — zapytamy o imię i nazwisko po weryfikacji.
+        </p>
+      </form>
+      <% } else { %>
+        <div class="email-sent-hint">
+          <div class="email-sent-icon">✉️</div>
+          <p>Sprawdź folder <strong>Spam/Oferty</strong> jeśli nie widzisz wiadomości.</p>
+          <a href="/login" class="btn btn--outline btn--sm" style="margin-top:1rem;">Wyślij ponownie</a>
+        </div>
+      <% } %>
+
+      <div class="auth-divider">
+        <span>Nie masz konta?</span>
+      </div>
+      <p class="auth-register-info">
+        Rejestracja odbywa się automatycznie przy pierwszym logowaniu. Wystarczy podać e-mail.
+      </p>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

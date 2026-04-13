@@ -1,0 +1,122 @@
+<%- include('../partials/head') %>
+
+<div class="admin-layout">
+  <aside class="admin-sidebar">
+    <div class="admin-sidebar-brand">🧗 SKARPA<br><span>ADMIN</span></div>
+    <nav class="admin-nav">
+      <a href="/admin" class="admin-nav-link">📊 Dashboard</a>
+      <a href="/admin/classes/new" class="admin-nav-link">➕ Nowe zajęcia</a>
+      <a href="/calendar" class="admin-nav-link" target="_blank">📅 Kalendarz</a>
+    </nav>
+    <div class="admin-sidebar-footer">
+      <form action="/auth/logout" method="POST">
+        <button type="submit" class="btn btn--outline btn--sm btn--full">Wyloguj</button>
+      </form>
+    </div>
+  </aside>
+
+  <main class="admin-main">
+    <%
+      const date = new Date(classData.start_time);
+      const dateStr = date.toLocaleDateString('pl-PL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      const timeStr = date.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
+    %>
+
+    <div class="admin-topbar">
+      <div>
+        <h1>Lista obecności</h1>
+        <p class="admin-topbar-sub"><%= classData.name %> • <%= dateStr %> • <%= timeStr %></p>
+      </div>
+      <div class="admin-topbar-actions">
+        <button onclick="window.print()" class="btn btn--outline">🖨 Drukuj</button>
+        <a href="/admin" class="btn btn--outline">← Powrót</a>
+      </div>
+    </div>
+
+    <div class="attendance-summary">
+      <div class="att-stat">
+        <span class="att-stat-num"><%= allParticipants.length %></span>
+        <span>Zapisanych uczestników</span>
+      </div>
+      <div class="att-stat">
+        <span class="att-stat-num"><%= classData.max_spots %></span>
+        <span>Maks. miejsc</span>
+      </div>
+      <div class="att-stat">
+        <span class="att-stat-num"><%= classData.max_spots - allParticipants.length %></span>
+        <span>Wolnych miejsc</span>
+      </div>
+      <div class="att-stat">
+        <span class="att-stat-num"><%= bookings.length %></span>
+        <span>Rezerwacji</span>
+      </div>
+    </div>
+
+    <!-- Lista do druku — czysta tabela z checkboxami -->
+    <div class="admin-section attendance-print-section">
+      <h2>Lista uczestników</h2>
+      <table class="admin-table attendance-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Imię i Nazwisko</th>
+            <th>Zapisał(a)</th>
+            <th>Data zapisu</th>
+            <th class="no-print">E-mail kontaktowy</th>
+            <th>Obecny ✓</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% allParticipants.forEach((p, idx) => { %>
+            <tr>
+              <td><%= idx + 1 %></td>
+              <td><strong><%= p.first_name %> <%= p.last_name %></strong></td>
+              <td><%= p.is_main ? '★ Sam/a' : 'Dołączony' %></td>
+              <td><%= new Date(p.bookedAt).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) %></td>
+              <td class="no-print"><a href="mailto:<%= p.bookerEmail %>"><%= p.bookerEmail %></a></td>
+              <td><span class="attendance-checkbox"></span></td>
+            </tr>
+          <% }); %>
+          <% if (allParticipants.length === 0) { %>
+            <tr><td colspan="6" style="text-align:center;color:#999;padding:2rem;">Brak zapisanych uczestników</td></tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Szczegóły rezerwacji -->
+    <div class="admin-section no-print">
+      <h2>Szczegóły rezerwacji (<%= bookings.length %>)</h2>
+      <% bookings.forEach(b => { %>
+        <div class="booking-detail-card">
+          <div class="booking-detail-header">
+            <span>📧 <strong><%= b.email %></strong></span>
+            <span class="booking-detail-date">
+              Zapisano: <%= new Date(b.created_at).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) %>
+            </span>
+          </div>
+          <div class="booking-detail-participants">
+            <% b.participants.forEach(p => { %>
+              <span class="participant-chip">
+                <%= p.first_name %> <%= p.last_name %><% if (p.is_main) { %> ★<% } %>
+              </span>
+            <% }); %>
+          </div>
+        </div>
+      <% }); %>
+    </div>
+
+  </main>
+</div>
+
+<style>
+@media print {
+  .admin-sidebar, .admin-topbar-actions, .no-print { display: none !important; }
+  .admin-main { margin: 0; padding: 1rem; }
+  .attendance-checkbox { display: inline-block; width: 18px; height: 18px; border: 2px solid #333; }
+}
+</style>
+
+<script src="/js/main.js"></script>
+</body>
+</html>

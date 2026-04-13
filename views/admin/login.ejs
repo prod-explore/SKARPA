@@ -1,0 +1,65 @@
+<%- include('../partials/head') %>
+
+<div class="auth-page">
+  <div class="auth-side auth-side--visual auth-side--admin">
+    <div class="auth-visual-content">
+      <a href="/" class="auth-brand">🧗 SKARPA BYTOM</a>
+      <div class="auth-visual-tagline">
+        <h2>Panel<br>Administratora</h2>
+        <p>Zarządzanie zajęciami i uczestnikami</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="auth-side auth-side--form">
+    <div class="auth-form-wrapper">
+      <a href="/" class="auth-back">← Strona główna</a>
+
+      <h1 class="auth-title">Logowanie admina</h1>
+      <p class="auth-subtitle">
+        Wyślemy jednorazowy link logowania na adres administratora.
+      </p>
+
+      <% if (typeof error !== 'undefined' && error) { %>
+        <div class="alert alert--error"><%= error %></div>
+      <% } %>
+
+      <% if (typeof success !== 'undefined' && success) { %>
+        <div class="alert alert--success">
+          <div class="alert-icon">📧</div>
+          <div><strong>Link wysłany!</strong><br><%= success %></div>
+        </div>
+      <% } %>
+
+      <% if (!(typeof success !== 'undefined' && success)) { %>
+      <form action="/admin/login" method="POST" class="auth-form">
+        <div class="form-group">
+          <label class="form-label">Adres e-mail administratora</label>
+          <input
+            type="email"
+            name="email"
+            class="form-input"
+            placeholder="wspinanie.ue@gmail.com"
+            required
+            autofocus
+            autocomplete="email"
+          >
+        </div>
+        <button type="submit" class="btn btn--primary btn--full btn--lg">
+          Wyślij link logowania →
+        </button>
+      </form>
+      <% } else { %>
+        <div class="email-sent-hint">
+          <div class="email-sent-icon">✉️</div>
+          <p>Sprawdź skrzynkę <strong>wspinanie.ue@gmail.com</strong>.<br>Link jest ważny 15 minut.</p>
+          <a href="/admin/login" class="btn btn--outline btn--sm" style="margin-top:1rem;">Wyślij ponownie</a>
+        </div>
+      <% } %>
+
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
