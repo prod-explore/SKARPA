@@ -4,8 +4,7 @@
   "description": "System rejestracji na zajęcia wspinaczkowe — Skarpa Bytom (projekt UE)",
   "main": "src/app.js",
   "scripts": {
-    "start": "node src/app.js",
-    "dev": "nodemon src/app.js"
+    "start": "node src/app.js"
   },
   "dependencies": {
     "express": "^4.18.2",
@@ -20,8 +19,5 @@
     "validator": "^13.11.0",
     "morgan": "^1.10.0",
     "compression": "^1.7.4"
-  },
-  "devDependencies": {
-    "nodemon": "^3.0.2"
   }
 }

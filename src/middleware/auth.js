@@ -7,7 +7,8 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { UserModel, MagicTokenModel } = require('../models/database');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) throw new Error('FATAL: JWT_SECRET is not set in .env');
 const MAGIC_LINK_EXPIRY = process.env.JWT_MAGIC_LINK_EXPIRY || '15m';
 
 /**

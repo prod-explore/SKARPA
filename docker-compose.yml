@@ -1,13 +1,7 @@
-# ============================================================
-# docker-compose.yml — Skarpa Bytom
-# Uruchomienie: docker-compose up -d
-# ============================================================
-
 version: '3.9'
 
 services:
 
-  # ---- Aplikacja Node.js ----
   app:
     build:
       context: .
@@ -15,34 +9,23 @@ services:
     container_name: skarpa-bytom-app
     restart: unless-stopped
 
-    # Zmienne środowiskowe — załadowane z pliku .env
     env_file: .env
 
-    # Wolumin na trwałe dane SQLite
     volumes:
       - skarpa_data:/app/data
 
-    # Eksponuj port tylko wewnątrz sieci Docker (proxy obsługuje ruch zewnętrzny)
     expose:
       - "3000"
 
     networks:
-      - skarpa_net
-      - proxy_net     # sieć zewnętrzna do komunikacji z proxy (np. Nginx, Traefik)
+      - skarpa-network
 
-    # Ograniczenia zasobów (opcjonalne, dostosuj do serwera)
     deploy:
       resources:
         limits:
           memory: 512M
           cpus: '0.5'
 
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
 
     logging:
       driver: "json-file"
@@ -50,19 +33,11 @@ services:
         max-size: "10m"
         max-file: "3"
 
-# ---- Sieci ----
 networks:
-  skarpa_net:
+  skarpa-network:
     driver: bridge
-    name: skarpa_internal
-
-  # Zewnętrzna sieć proxy — musi już istnieć (tworzona przez proxy/Traefik/Nginx)
-  # Jeśli nie używasz zewnętrznego proxy, zmień na: external: false
-  proxy_net:
     external: true
-    name: proxy_network   # zmień na nazwę swojej sieci proxy
 
-# ---- Woluminy ----
 volumes:
   skarpa_data:
     driver: local
