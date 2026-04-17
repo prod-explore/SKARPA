@@ -1,0 +1,118 @@
+<%- include('../partials/head') %>
+
+<div class="admin-layout">
+  <aside class="admin-sidebar">
+    <div class="admin-sidebar-brand">🧗 SKARPA<br><span>ADMIN</span></div>
+    <nav class="admin-nav">
+      <a href="/admin" class="admin-nav-link">📊 Dashboard</a>
+      <a href="/admin/classes/new" class="admin-nav-link">➕ Nowe zajęcia</a>
+      <a href="/admin/consents" class="admin-nav-link active">📋 Zgody</a>
+      <a href="/calendar" class="admin-nav-link" target="_blank">📅 Kalendarz</a>
+    </nav>
+    <div class="admin-sidebar-footer">
+      <form action="/auth/logout" method="POST">
+        <button type="submit" class="btn btn--outline btn--sm btn--full">Wyloguj</button>
+      </form>
+    </div>
+  </aside>
+
+  <main class="admin-main">
+    <div class="admin-topbar">
+      <div>
+        <h1>Zarządzanie zgodami</h1>
+        <p class="admin-topbar-sub">Weryfikacja kont niepełnoletnich uczestników</p>
+      </div>
+      <a href="/admin" class="btn btn--outline">← Powrót</a>
+    </div>
+
+    <% if (typeof success !== 'undefined' && success) { %>
+      <div class="alert alert--success"><%= success %></div>
+    <% } %>
+    <% if (typeof error !== 'undefined' && error) { %>
+      <div class="alert alert--error"><%= error %></div>
+    <% } %>
+
+    <!-- Oczekujące na weryfikację -->
+    <div class="admin-section">
+      <h2>⏳ Oczekujące na weryfikację (<%= pendingUsers.length %>)</h2>
+
+      <% if (pendingUsers.length === 0) { %>
+        <div class="empty-state">
+          <div class="empty-state-icon">✅</div>
+          <h3>Brak oczekujących zgód</h3>
+          <p>Nie ma żadnych próśb o weryfikację konta niepełnoletniego.</p>
+        </div>
+      <% } else { %>
+        <div class="admin-table-wrapper">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Imię i Nazwisko</th>
+                <th>E-mail</th>
+                <th>Data rejestracji</th>
+                <th>Akcje</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% pendingUsers.forEach(u => { %>
+                <tr>
+                  <td>
+                    <strong><%= u.first_name %> <%= u.last_name %></strong>
+                    <br><span class="badge badge--soon">👦 Niepełnoletni</span>
+                  </td>
+                  <td><a href="mailto:<%= u.email %>"><%= u.email %></a></td>
+                  <td><%= new Date(u.created_at).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short', year: 'numeric' }) %></td>
+                  <td class="admin-actions">
+                    <form action="/admin/consents/<%= u.id %>/approve" method="POST" style="display:inline;"
+                          onsubmit="return confirm('Zatwierdzić zgodę dla tego dziecka? Będzie mogło samodzielnie rezerwować zajęcia.')">
+                      <button type="submit" class="btn btn--primary btn--xs">✅ Zatwierdź</button>
+                    </form>
+                    <form action="/admin/consents/<%= u.id %>/reject" method="POST" style="display:inline;"
+                          onsubmit="return confirm('Odrzucić prośbę? Dziecko będzie mogło ponownie poprosić o weryfikację.')">
+                      <button type="submit" class="btn btn--danger btn--xs">✕ Odrzuć</button>
+                    </form>
+                  </td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </div>
+
+    <!-- Zweryfikowani niepełnoletni -->
+    <div class="admin-section">
+      <h2>✅ Zweryfikowani niepełnoletni (<%= verifiedChildren.length %>)</h2>
+
+      <% if (verifiedChildren.length === 0) { %>
+        <p style="color:var(--text-muted);">Brak zweryfikowanych kont niepełnoletnich.</p>
+      <% } else { %>
+        <div class="admin-table-wrapper">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Imię i Nazwisko</th>
+                <th>E-mail</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% verifiedChildren.forEach(u => { %>
+                <tr>
+                  <td><strong><%= u.first_name %> <%= u.last_name %></strong></td>
+                  <td><%= u.email %></td>
+                  <td><span class="badge badge--active">Zweryfikowany</span></td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </div>
+
+  </main>
+</div>
+
+<script src="/js/main.js"></script>
+</body>
+</html>

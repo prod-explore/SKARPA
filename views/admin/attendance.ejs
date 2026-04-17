@@ -6,6 +6,7 @@
     <nav class="admin-nav">
       <a href="/admin" class="admin-nav-link">📊 Dashboard</a>
       <a href="/admin/classes/new" class="admin-nav-link">➕ Nowe zajęcia</a>
+      <a href="/admin/consents" class="admin-nav-link">📋 Zgody</a>
       <a href="/calendar" class="admin-nav-link" target="_blank">📅 Kalendarz</a>
     </nav>
     <div class="admin-sidebar-footer">
@@ -35,17 +36,23 @@
 
     <div class="attendance-summary">
       <div class="att-stat">
-        <span class="att-stat-num"><%= allParticipants.length %></span>
-        <span>Zapisanych uczestników</span>
+        <span class="att-stat-num"><%= allParticipants.filter(p => p.age_category === 'adult').length %></span>
+        <span>Dorośli</span>
+      </div>
+      <div class="att-stat">
+        <span class="att-stat-num"><%= allParticipants.filter(p => p.age_category === 'child').length %></span>
+        <span>Dzieci</span>
       </div>
       <div class="att-stat">
         <span class="att-stat-num"><%= classData.max_spots %></span>
-        <span>Maks. miejsc</span>
+        <span>Maks. dorośli</span>
       </div>
+      <% if (classData.class_type === 'adult_and_child') { %>
       <div class="att-stat">
-        <span class="att-stat-num"><%= classData.max_spots - allParticipants.length %></span>
-        <span>Wolnych miejsc</span>
+        <span class="att-stat-num"><%= classData.max_child_spots %></span>
+        <span>Maks. dzieci</span>
       </div>
+      <% } %>
       <div class="att-stat">
         <span class="att-stat-num"><%= bookings.length %></span>
         <span>Rezerwacji</span>
@@ -60,6 +67,7 @@
           <tr>
             <th>#</th>
             <th>Imię i Nazwisko</th>
+            <th>Kategoria</th>
             <th>Zapisał(a)</th>
             <th>Data zapisu</th>
             <th class="no-print">E-mail kontaktowy</th>
@@ -71,6 +79,11 @@
             <tr>
               <td><%= idx + 1 %></td>
               <td><strong><%= p.first_name %> <%= p.last_name %></strong></td>
+              <td>
+                <span class="badge-cat badge-cat--<%= p.age_category === 'child' ? 'kids' : 'adults' %>">
+                  <%= p.age_category === 'child' ? '👦 Dziecko' : '🧑 Dorosły' %>
+                </span>
+              </td>
               <td><%= p.is_main ? '★ Sam/a' : 'Dołączony' %></td>
               <td><%= new Date(p.bookedAt).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) %></td>
               <td class="no-print"><a href="mailto:<%= p.bookerEmail %>"><%= p.bookerEmail %></a></td>
@@ -78,7 +91,7 @@
             </tr>
           <% }); %>
           <% if (allParticipants.length === 0) { %>
-            <tr><td colspan="6" style="text-align:center;color:#999;padding:2rem;">Brak zapisanych uczestników</td></tr>
+            <tr><td colspan="7" style="text-align:center;color:#999;padding:2rem;">Brak zapisanych uczestników</td></tr>
           <% } %>
         </tbody>
       </table>

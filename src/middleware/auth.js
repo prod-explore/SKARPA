@@ -96,7 +96,7 @@ function requireAuth(req, res, next) {
 function requireProfile(req, res, next) {
   if (!req.user) return requireAuth(req, res, next);
 
-  if (!req.user.first_name || !req.user.last_name) {
+  if (!req.user.first_name || !req.user.last_name || !req.user.age_category) {
     return res.redirect('/profile/complete?next=' + encodeURIComponent(req.originalUrl));
   }
   next();

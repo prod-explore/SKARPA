@@ -8,6 +8,7 @@
     <nav class="admin-nav">
       <a href="/admin" class="admin-nav-link active">📊 Dashboard</a>
       <a href="/admin/classes/new" class="admin-nav-link">➕ Nowe zajęcia</a>
+      <a href="/admin/consents" class="admin-nav-link">📋 Zgody (<%= typeof pendingConsents !== 'undefined' ? pendingConsents : 0 %>)</a>
       <a href="/calendar" class="admin-nav-link" target="_blank">📅 Kalendarz (widok)</a>
     </nav>
     <div class="admin-sidebar-footer">
@@ -59,7 +60,6 @@
           W przypadku problemów technicznych z systemem, uczestnicy mogą zapisywać się
           bezpośrednio przez e-mail:
           <a href="mailto:wspinanie.ue@gmail.com" class="admin-email-link">wspinanie.ue@gmail.com</a>.
-          Informacja ta jest widoczna na stronie głównej oraz w kalendarzu.
         </p>
       </div>
     </div>
@@ -79,9 +79,9 @@
               <tr>
                 <th>Nazwa</th>
                 <th>Data i godzina</th>
-                <th>Kategoria</th>
-                <th>Miejsca</th>
-                <th>Uczestnicy</th>
+                <th>Typ</th>
+                <th>Dorośli</th>
+                <th>Dzieci</th>
                 <th>Status</th>
                 <th>Akcje</th>
               </tr>
@@ -93,28 +93,42 @@
                   const dateStr = date.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short', year: 'numeric' });
                   const timeStr = date.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
                   const isPast = date < new Date();
-                  const taken = cls.participants_count || 0;
-                  const pct = Math.round(taken / cls.max_spots * 100);
+                  const adultTaken = cls.adult_taken || 0;
+                  const childTaken = cls.child_taken || 0;
+                  const adultPct = Math.round(adultTaken / cls.max_spots * 100);
+                  const childPct = cls.max_child_spots > 0 ? Math.round(childTaken / cls.max_child_spots * 100) : 0;
                 %>
                 <tr class="<%= cls.is_cancelled ? 'row--cancelled' : isPast ? 'row--past' : '' %>">
                   <td>
                     <strong><%= cls.name %></strong>
                     <% if (cls.instructor) { %><br><small>👤 <%= cls.instructor %></small><% } %>
+                    <% if (cls.class_type === 'adult_and_child' && cls.child_instructor) { %><br><small>👦 <%= cls.child_instructor %></small><% } %>
                   </td>
                   <td><%= dateStr %><br><small><%= timeStr %></small></td>
                   <td>
-                    <span class="badge-cat badge-cat--<%= cls.category %>">
-                      <%= cls.category === 'kids' ? 'Dzieci' : cls.category === 'adults' ? 'Dorośli' : 'Mieszane' %>
+                    <span class="badge-cat badge-cat--<%= cls.class_type === 'adult_and_child' ? 'mixed' : 'adults' %>">
+                      <%= cls.class_type === 'adult_and_child' ? 'D+Dz' : 'Dorośli' %>
                     </span>
                   </td>
-                  <td><%= cls.max_spots %></td>
                   <td>
                     <div class="mini-bar-wrap">
                       <div class="mini-bar">
-                        <div class="mini-bar-fill" style="width:<%= pct %>%"></div>
+                        <div class="mini-bar-fill" style="width:<%= adultPct %>%"></div>
                       </div>
-                      <span><%= taken %>/<%= cls.max_spots %></span>
+                      <span><%= adultTaken %>/<%= cls.max_spots %></span>
                     </div>
+                  </td>
+                  <td>
+                    <% if (cls.class_type === 'adult_and_child' && cls.max_child_spots > 0) { %>
+                    <div class="mini-bar-wrap">
+                      <div class="mini-bar">
+                        <div class="mini-bar-fill" style="width:<%= childPct %>%"></div>
+                      </div>
+                      <span><%= childTaken %>/<%= cls.max_child_spots %></span>
+                    </div>
+                    <% } else { %>
+                      <span style="color:#999;">—</span>
+                    <% } %>
                   </td>
                   <td>
                     <% if (cls.is_cancelled) { %>

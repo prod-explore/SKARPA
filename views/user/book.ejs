@@ -11,13 +11,15 @@
         const date = new Date(classData.start_time);
         const dateStr = date.toLocaleDateString('pl-PL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         const timeStr = date.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
+        const isChildUser = user.age_category === 'child';
+        const isDualClass = classData.class_type === 'adult_and_child';
       %>
 
       <!-- Info o zajęciach -->
       <div class="class-info-card">
         <div class="class-info-header">
           <span class="class-category-badge class-category-badge--lg">
-            <%= classData.category === 'kids' ? '👶 Zajęcia dla dzieci' : classData.category === 'adults' ? '🧑 Zajęcia dla dorosłych' : '👥 Zajęcia mieszane' %>
+            <%= isDualClass ? '👥 Dorośli + Dzieci' : '🧑 Zajęcia dla dorosłych' %>
           </span>
         </div>
         <h1 class="class-info-title"><%= classData.name %></h1>
@@ -36,13 +38,30 @@
             <span>Instruktor: <%= classData.instructor %></span>
           </div>
           <% } %>
-          <% if (typeof spotsLeft !== 'undefined') { %>
+          <% if (isDualClass && classData.child_instructor) { %>
           <div class="class-info-meta-item">
-            <span class="meta-icon">🪑</span>
-            <span><strong><%= spotsLeft %></strong> wolnych miejsc</span>
+            <span class="meta-icon">👦</span>
+            <span>Instruktor (dzieci): <%= classData.child_instructor %></span>
           </div>
           <% } %>
         </div>
+
+        <!-- Podwójne paski miejsc -->
+        <% if (typeof adultSpotsLeft !== 'undefined') { %>
+        <div class="spots-info-box">
+          <div class="spots-info-row">
+            <span>🧑 Miejsca (dorośli):</span>
+            <strong class="<%= adultSpotsLeft <= 3 ? 'spots-label--low' : '' %>"><%= adultSpotsLeft %> wolnych</strong>
+          </div>
+          <% if (isDualClass) { %>
+          <div class="spots-info-row">
+            <span>👦 Miejsca (dzieci):</span>
+            <strong class="<%= childSpotsLeft <= 3 ? 'spots-label--low' : '' %>"><%= childSpotsLeft %> wolnych</strong>
+          </div>
+          <% } %>
+        </div>
+        <% } %>
+
         <% if (classData.description) { %>
           <p class="class-info-desc"><%= classData.description %></p>
         <% } %>
@@ -64,66 +83,98 @@
         <div class="locked-state">
           <div class="locked-icon">😞</div>
           <h2>Brak wolnych miejsc</h2>
-          <p>Wszystkie miejsca na te zajęcia zostały zajęte.</p>
+          <p><%= error %></p>
           <a href="/calendar" class="btn btn--primary">Znajdź inne terminy</a>
         </div>
 
       <% } else { %>
         <!-- Formularz zapisu -->
         <div class="booking-form-card">
-          <h2>Zapisz uczestników</h2>
-          <p class="booking-form-hint">
-            Możesz zapisać siebie i inne osoby w jednym kroku (max. <%= spotsLeft %> łącznie).
-          </p>
 
-          <form action="/book/<%= classData.id %>" method="POST" id="bookingForm">
-
-            <!-- Główna osoba: zalogowany użytkownik -->
-            <div class="participant-block participant-block--main">
-              <div class="participant-block-header">
-                <span class="participant-number">Osoba 1 (Ty)</span>
-                <label class="checkbox-label">
-                  <input type="checkbox" name="includeSelf" value="true" id="includeSelf" checked>
-                  <span>Zapisz mnie</span>
-                </label>
-              </div>
-              <div class="participant-main-info">
-                <span class="participant-name-badge">
-                  <%= user.first_name %> <%= user.last_name %>
-                </span>
-                <span class="participant-email"><%= user.email %></span>
-              </div>
-            </div>
-
-            <!-- Dodatkowe osoby -->
-            <div id="extraParticipants">
-              <!-- Dynamicznie dodawane przez JS -->
-            </div>
-
-            <!-- Przycisk dodania osoby -->
-            <% if (spotsLeft > 1) { %>
-            <button type="button" class="btn btn--outline btn--sm" id="addPersonBtn">
-              + Dodaj kolejną osobę
-            </button>
-            <% } %>
-
-            <!-- Podsumowanie -->
-            <div class="booking-summary" id="bookingSummary">
-              <div class="booking-summary-inner">
-                <span>Zapisujesz: <strong id="participantCount">1</strong> osob(ę/y)</span>
-                <span id="spotsWarning" class="spots-warning" style="display:none;"></span>
-              </div>
-            </div>
-
-            <button type="submit" class="btn btn--primary btn--full btn--lg">
-              Potwierdź zapis →
-            </button>
-
-            <p class="booking-terms">
-              Po zapisaniu otrzymasz potwierdzenie e-mailem.
-              Możesz odwołać zapis do 2 godzin przed zajęciami.
+          <% if (isChildUser) { %>
+            <!-- Widok dla samodzielnego zweryfikowanego dziecka -->
+            <h2>Potwierdź zapis</h2>
+            <p class="booking-form-hint">
+              Zapisujesz się jako uczestnik w grupie dziecięcej.
             </p>
-          </form>
+            <form action="/book/<%= classData.id %>" method="POST" id="bookingForm">
+              <div class="participant-block participant-block--main">
+                <div class="participant-block-header">
+                  <span class="participant-number">👦 Ty</span>
+                </div>
+                <div class="participant-main-info">
+                  <span class="participant-name-badge">
+                    <%= user.first_name %> <%= user.last_name %>
+                  </span>
+                  <span class="participant-email"><%= user.email %></span>
+                </div>
+              </div>
+
+              <button type="submit" class="btn btn--primary btn--full btn--lg">
+                Potwierdź zapis →
+              </button>
+              <p class="booking-terms">
+                Zapisujesz się na listę dzieci. Możesz odwołać zapis do 2h przed zajęciami.
+              </p>
+            </form>
+
+          <% } else { %>
+            <!-- Widok dla dorosłego -->
+            <h2>Zapisz uczestników</h2>
+            <p class="booking-form-hint">
+              Możesz zapisać siebie i inne osoby w jednym kroku.
+              <% if (isDualClass) { %>
+                Przy dodawaniu osoby zaznacz, czy to dorosły czy dziecko.
+              <% } %>
+            </p>
+
+            <form action="/book/<%= classData.id %>" method="POST" id="bookingForm">
+
+              <!-- Główna osoba: zalogowany użytkownik -->
+              <div class="participant-block participant-block--main">
+                <div class="participant-block-header">
+                  <span class="participant-number">Osoba 1 (Ty) — 🧑 Dorosły</span>
+                  <label class="checkbox-label">
+                    <input type="checkbox" name="includeSelf" value="true" id="includeSelf" checked>
+                    <span>Zapisz mnie</span>
+                  </label>
+                </div>
+                <div class="participant-main-info">
+                  <span class="participant-name-badge">
+                    <%= user.first_name %> <%= user.last_name %>
+                  </span>
+                  <span class="participant-email"><%= user.email %></span>
+                </div>
+              </div>
+
+              <!-- Dodatkowe osoby -->
+              <div id="extraParticipants">
+                <!-- Dynamicznie dodawane przez JS -->
+              </div>
+
+              <!-- Przycisk dodania osoby -->
+              <button type="button" class="btn btn--outline btn--sm" id="addPersonBtn">
+                + Dodaj kolejną osobę
+              </button>
+
+              <!-- Podsumowanie -->
+              <div class="booking-summary" id="bookingSummary">
+                <div class="booking-summary-inner">
+                  <span>Zapisujesz: <strong id="participantCount">1</strong> osob(ę/y)</span>
+                  <span id="spotsWarning" class="spots-warning" style="display:none;"></span>
+                </div>
+              </div>
+
+              <button type="submit" class="btn btn--primary btn--full btn--lg">
+                Potwierdź zapis →
+              </button>
+
+              <p class="booking-terms">
+                Po zapisaniu otrzymasz potwierdzenie e-mailem.
+                Możesz odwołać zapis do 2 godzin przed zajęciami.
+              </p>
+            </form>
+          <% } %>
         </div>
       <% } %>
     <% } %>
@@ -134,7 +185,9 @@
 <%- include('../partials/footer') %>
 
 <script>
-const MAX_SPOTS = <%= typeof spotsLeft !== 'undefined' ? spotsLeft : 1 %>;
+const IS_DUAL_CLASS = <%= typeof classData !== 'undefined' && classData ? (classData.class_type === 'adult_and_child' ? 'true' : 'false') : 'false' %>;
+const MAX_ADULT_SPOTS = <%= typeof adultSpotsLeft !== 'undefined' ? adultSpotsLeft : 1 %>;
+const MAX_CHILD_SPOTS = <%= typeof childSpotsLeft !== 'undefined' ? childSpotsLeft : 0 %>;
 let extraCount = 0;
 
 const addBtn = document.getElementById('addPersonBtn');
@@ -144,33 +197,37 @@ const spotsWarn = document.getElementById('spotsWarning');
 const selfCheckbox = document.getElementById('includeSelf');
 
 function updateCount() {
+  if (!countEl) return;
   const selfChecked = selfCheckbox ? (selfCheckbox.checked ? 1 : 0) : 0;
-  const total = selfChecked + extraCount;
-  if (countEl) countEl.textContent = total;
-
-  if (spotsWarn) {
-    if (total >= MAX_SPOTS) {
-      spotsWarn.textContent = `Maksimum ${MAX_SPOTS} miejsc`;
-      spotsWarn.style.display = 'inline';
-      if (addBtn) addBtn.style.display = 'none';
-    } else {
-      spotsWarn.style.display = 'none';
-      if (addBtn) addBtn.style.display = 'inline-flex';
-    }
-  }
+  const extras = extraContainer ? extraContainer.querySelectorAll('.participant-block--extra').length : 0;
+  const total = selfChecked + extras;
+  countEl.textContent = total;
 }
 
 if (addBtn) {
   addBtn.addEventListener('click', function() {
-    const selfChecked = selfCheckbox ? (selfCheckbox.checked ? 1 : 0) : 0;
-    if (selfChecked + extraCount >= MAX_SPOTS) return;
-
     extraCount++;
     const idx = extraCount;
 
     const block = document.createElement('div');
     block.className = 'participant-block participant-block--extra';
     block.id = `extra_${idx}`;
+
+    let ageCategoryHtml = '';
+    if (IS_DUAL_CLASS) {
+      ageCategoryHtml = `
+        <div class="form-group">
+          <label class="form-label">Kategoria *</label>
+          <select name="extraAgeCategory" class="form-input form-select">
+            <option value="adult">🧑 Dorosły (18+)</option>
+            <option value="child">👦 Dziecko (7–17)</option>
+          </select>
+        </div>
+      `;
+    } else {
+      ageCategoryHtml = `<input type="hidden" name="extraAgeCategory" value="adult">`;
+    }
+
     block.innerHTML = `
       <div class="participant-block-header">
         <span class="participant-number">Osoba ${idx + 1}</span>
@@ -185,6 +242,7 @@ if (addBtn) {
           <label class="form-label">Nazwisko *</label>
           <input type="text" name="extraLastName" class="form-input" placeholder="Nazwisko" required>
         </div>
+        ${ageCategoryHtml}
       </div>
     `;
     extraContainer.appendChild(block);

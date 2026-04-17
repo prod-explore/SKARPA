@@ -59,18 +59,15 @@
           const date = new Date(cls.start_time);
           const dateStr = date.toLocaleDateString('pl-PL', { weekday: 'short', day: 'numeric', month: 'short' });
           const timeStr = date.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
-          const taken = cls.taken_spots || 0;
-          const left = cls.max_spots - taken;
+          const adultLeft = cls.max_spots - (cls.adult_taken || 0);
+          const childLeft = cls.class_type === 'adult_and_child' ? (cls.max_child_spots - (cls.child_taken || 0)) : 0;
           const isOpen = isBookingOpen(cls.start_time);
           const openDate = getBookingOpenDate(cls.start_time);
         %>
-        <div class="class-card <%= cls.category %>">
+        <div class="class-card">
           <div class="class-card-header">
             <span class="class-category-badge">
-              <%= cls.category === 'kids' ? '👶 Dzieci' : cls.category === 'adults' ? '🧑 Dorośli' : '👥 Mieszane' %>
-            </span>
-            <span class="class-spots <%= left <= 3 ? 'class-spots--low' : '' %>">
-              <%= left > 0 ? `${left} miejsc` : 'Brak miejsc' %>
+              <%= cls.class_type === 'adult_and_child' ? '👥 Dorośli + Dzieci' : '🧑 Dorośli' %>
             </span>
           </div>
           <h3 class="class-card-name"><%= cls.name %></h3>
@@ -79,13 +76,29 @@
             <span>⏰ <%= timeStr %></span>
             <% if (cls.instructor) { %><span>👤 <%= cls.instructor %></span><% } %>
           </div>
+          <div class="class-card-spots">
+            <div class="spots-row">
+              <span class="spots-label <%= adultLeft <= 3 ? 'spots-label--low' : '' %>">
+                🧑 Dorośli: <%= adultLeft %> wolnych
+              </span>
+            </div>
+            <% if (cls.class_type === 'adult_and_child') { %>
+            <div class="spots-row">
+              <span class="spots-label <%= childLeft <= 3 ? 'spots-label--low' : '' %>">
+                👦 Dzieci: <%= childLeft %> wolnych
+              </span>
+            </div>
+            <% } %>
+          </div>
           <div class="class-card-action">
             <% if (!isOpen) { %>
               <span class="class-locked">🔒 Zapisy od <%= openDate.toLocaleDateString('pl-PL', {day:'numeric', month:'short'}) %></span>
-            <% } else if (left <= 0) { %>
+            <% } else if (adultLeft <= 0) { %>
               <span class="class-full">Brak miejsc</span>
-            <% } else { %>
+            <% } else if (typeof user !== 'undefined' && user) { %>
               <a href="/book/<%= cls.id %>" class="btn btn--primary btn--sm">Zapisz się</a>
+            <% } else { %>
+              <a href="/login?next=/book/<%= cls.id %>" class="btn btn--primary btn--sm">Zaloguj się</a>
             <% } %>
           </div>
         </div>

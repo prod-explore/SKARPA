@@ -6,6 +6,7 @@
     <nav class="admin-nav">
       <a href="/admin" class="admin-nav-link">📊 Dashboard</a>
       <a href="/admin/classes/new" class="admin-nav-link active">➕ Nowe zajęcia</a>
+      <a href="/admin/consents" class="admin-nav-link">📋 Zgody</a>
       <a href="/calendar" class="admin-nav-link" target="_blank">📅 Kalendarz</a>
     </nav>
     <div class="admin-sidebar-footer">
@@ -40,11 +41,10 @@
                    placeholder="np. Wspinaczka dla początkujących" required>
           </div>
           <div class="form-group">
-            <label class="form-label">Kategoria</label>
-            <select name="category" class="form-input form-select">
-              <option value="mixed"  <%= (!classData || classData.category === 'mixed')   ? 'selected' : '' %>>👥 Mieszane</option>
-              <option value="kids"   <%= (classData && classData.category === 'kids')    ? 'selected' : '' %>>👶 Dzieci (7–14 lat)</option>
-              <option value="adults" <%= (classData && classData.category === 'adults')  ? 'selected' : '' %>>🧑 Dorośli (18+)</option>
+            <label class="form-label">Typ zajęć *</label>
+            <select name="classType" class="form-input form-select" id="classTypeSelect">
+              <option value="adult_only"      <%= (!classData || classData.class_type === 'adult_only')      ? 'selected' : '' %>>🧑 Tylko dorośli</option>
+              <option value="adult_and_child"  <%= (classData && classData.class_type === 'adult_and_child')  ? 'selected' : '' %>>👥 Dorośli + Dzieci</option>
             </select>
           </div>
         </div>
@@ -72,16 +72,34 @@
 
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Maks. liczba uczestników *</label>
+            <label class="form-label">Maks. uczestników (dorośli) *</label>
             <input type="number" name="maxSpots" class="form-input"
                    value="<%= classData ? classData.max_spots : '' %>"
                    min="1" max="200" placeholder="12" required>
           </div>
           <div class="form-group">
-            <label class="form-label">Instruktor (opcjonalnie)</label>
+            <label class="form-label">Instruktor (dorośli)</label>
             <input type="text" name="instructor" class="form-input"
                    value="<%= classData ? classData.instructor || '' : '' %>"
-                   placeholder="Imię i nazwisko instruktora">
+                   placeholder="Imię i nazwisko">
+          </div>
+        </div>
+
+        <!-- Pola widoczne tylko dla adult_and_child -->
+        <div id="childFields" style="<%= (!classData || classData.class_type !== 'adult_and_child') ? 'display:none;' : '' %>">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Maks. dzieci (animacje)</label>
+              <input type="number" name="maxChildSpots" class="form-input"
+                     value="<%= classData ? classData.max_child_spots || '' : '' %>"
+                     min="0" max="200" placeholder="10">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Instruktor (dzieci/animacje)</label>
+              <input type="text" name="childInstructor" class="form-input"
+                     value="<%= classData ? classData.child_instructor || '' : '' %>"
+                     placeholder="Imię i nazwisko">
+            </div>
           </div>
         </div>
 
@@ -97,6 +115,13 @@
   </main>
 </div>
 
+<script>
+  // Pokaz/ukryj pola dzieci w zależności od typu
+  document.getElementById('classTypeSelect').addEventListener('change', function() {
+    document.getElementById('childFields').style.display =
+      this.value === 'adult_and_child' ? '' : 'none';
+  });
+</script>
 <script src="/js/main.js"></script>
 </body>
 </html>

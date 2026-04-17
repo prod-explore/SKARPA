@@ -1,6 +1,8 @@
 /**
  * database.js — Inicjalizacja bazy danych SQLite i modele danych
  * Używamy better-sqlite3 (synchroniczny, idealny do Dockera bez zewnętrznych usług)
+ *
+ * v2 — Kategorie wiekowe, podwójne limity miejsc, zgody rodzicielskie
  */
 
 const Database = require('better-sqlite3');
@@ -29,14 +31,20 @@ function initDatabase() {
 
   db.exec(`
     -- Tabela użytkowników
+    -- age_category: 'adult' lub 'child'
+    -- is_verified: 1 (dorosły od razu, dziecko po zatwierdzeniu zgody)
+    -- consent_requested: 1 gdy dziecko poprosiło o weryfikację
     CREATE TABLE IF NOT EXISTS users (
-      id          INTEGER PRIMARY KEY AUTOINCREMENT,
-      email       TEXT    UNIQUE NOT NULL,
-      first_name  TEXT,
-      last_name   TEXT,
-      is_admin    INTEGER DEFAULT 0,
-      created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
-      last_login  DATETIME
+      id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+      email              TEXT    UNIQUE NOT NULL,
+      first_name         TEXT,
+      last_name          TEXT,
+      age_category       TEXT    DEFAULT NULL,
+      is_verified        INTEGER DEFAULT 0,
+      consent_requested  INTEGER DEFAULT 0,
+      is_admin           INTEGER DEFAULT 0,
+      created_at         DATETIME DEFAULT CURRENT_TIMESTAMP,
+      last_login         DATETIME
     );
 
     -- Tabela tokenów magic link (jednorazowe, wygasające)
@@ -51,17 +59,24 @@ function initDatabase() {
     );
 
     -- Tabela zajęć
+    -- class_type: 'adult_only' lub 'adult_and_child'
+    -- max_spots: limit dorosłych
+    -- max_child_spots: limit dzieci (tylko dla 'adult_and_child')
+    -- child_instructor: instruktor animacji dla dzieci
     CREATE TABLE IF NOT EXISTS classes (
-      id           INTEGER PRIMARY KEY AUTOINCREMENT,
-      name         TEXT    NOT NULL,
-      description  TEXT,
-      start_time   DATETIME NOT NULL,
-      duration_min INTEGER DEFAULT 90,
-      max_spots    INTEGER NOT NULL,
-      instructor   TEXT,
-      category     TEXT    DEFAULT 'mixed',
-      created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
-      is_cancelled INTEGER DEFAULT 0
+      id               INTEGER PRIMARY KEY AUTOINCREMENT,
+      name             TEXT    NOT NULL,
+      description      TEXT,
+      start_time       DATETIME NOT NULL,
+      duration_min     INTEGER DEFAULT 90,
+      class_type       TEXT    DEFAULT 'adult_only',
+      max_spots        INTEGER NOT NULL,
+      max_child_spots  INTEGER DEFAULT 0,
+      instructor       TEXT,
+      child_instructor TEXT,
+      category         TEXT    DEFAULT 'adults',
+      created_at       DATETIME DEFAULT CURRENT_TIMESTAMP,
+      is_cancelled     INTEGER DEFAULT 0
     );
 
     -- Tabela rezerwacji (jedna rezerwacja = jeden "zapis" przez użytkownika)
@@ -76,12 +91,14 @@ function initDatabase() {
     );
 
     -- Tabela uczestników (booking może zawierać wiele osób)
+    -- age_category: 'adult' lub 'child' — do rozliczania pul
     CREATE TABLE IF NOT EXISTS participants (
-      id         INTEGER PRIMARY KEY AUTOINCREMENT,
-      booking_id INTEGER NOT NULL,
-      first_name TEXT    NOT NULL,
-      last_name  TEXT    NOT NULL,
-      is_main    INTEGER DEFAULT 0,
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      booking_id   INTEGER NOT NULL,
+      first_name   TEXT    NOT NULL,
+      last_name    TEXT    NOT NULL,
+      age_category TEXT    DEFAULT 'adult',
+      is_main      INTEGER DEFAULT 0,
       FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE
     );
 
@@ -91,6 +108,35 @@ function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_bookings_user_id   ON bookings(user_id);
     CREATE INDEX IF NOT EXISTS idx_magic_tokens_token ON magic_tokens(token);
   `);
+
+  // ============================================================
+  // Migracje — dodaj brakujące kolumny do istniejących tabel
+  // ============================================================
+  const migrations = [
+    // users
+    { table: 'users', column: 'age_category',      sql: "ALTER TABLE users ADD COLUMN age_category TEXT DEFAULT NULL" },
+    { table: 'users', column: 'is_verified',       sql: "ALTER TABLE users ADD COLUMN is_verified INTEGER DEFAULT 0" },
+    { table: 'users', column: 'consent_requested', sql: "ALTER TABLE users ADD COLUMN consent_requested INTEGER DEFAULT 0" },
+    // classes
+    { table: 'classes', column: 'class_type',       sql: "ALTER TABLE classes ADD COLUMN class_type TEXT DEFAULT 'adult_only'" },
+    { table: 'classes', column: 'max_child_spots',  sql: "ALTER TABLE classes ADD COLUMN max_child_spots INTEGER DEFAULT 0" },
+    { table: 'classes', column: 'child_instructor', sql: "ALTER TABLE classes ADD COLUMN child_instructor TEXT" },
+    // participants
+    { table: 'participants', column: 'age_category', sql: "ALTER TABLE participants ADD COLUMN age_category TEXT DEFAULT 'adult'" },
+  ];
+
+  for (const m of migrations) {
+    try {
+      const cols = db.pragma(`table_info(${m.table})`);
+      const exists = cols.some(c => c.name === m.column);
+      if (!exists) {
+        db.exec(m.sql);
+        console.log(`  ↳ Migracja: dodano ${m.table}.${m.column}`);
+      }
+    } catch (e) {
+      // Kolumna już istnieje lub inna sytuacja — ignoruj
+    }
+  }
 
   console.log('✅ Baza danych SQLite zainicjalizowana:', DB_PATH);
   return db;
@@ -117,10 +163,12 @@ const UserModel = {
       'INSERT INTO users (email, first_name, last_name) VALUES (?, ?, ?)'
     ).run(email, firstName, lastName),
 
-  updateProfile: (id, firstName, lastName) =>
+  updateProfile: (id, firstName, lastName, ageCategory) => {
+    const isVerified = ageCategory === 'adult' ? 1 : 0;
     getDb().prepare(
-      'UPDATE users SET first_name = ?, last_name = ? WHERE id = ?'
-    ).run(firstName, lastName, id),
+      'UPDATE users SET first_name = ?, last_name = ?, age_category = ?, is_verified = ? WHERE id = ?'
+    ).run(firstName, lastName, ageCategory, isVerified, id);
+  },
 
   updateLastLogin: (id) =>
     getDb().prepare(
@@ -132,7 +180,33 @@ const UserModel = {
     if (existing) return { user: existing, isNew: false };
     const result = UserModel.create(email, null, null);
     return { user: UserModel.findById(result.lastInsertRowid), isNew: true };
-  }
+  },
+
+  // Zgody rodzicielskie
+  requestConsent: (id) =>
+    getDb().prepare(
+      'UPDATE users SET consent_requested = 1 WHERE id = ?'
+    ).run(id),
+
+  approveConsent: (id) =>
+    getDb().prepare(
+      'UPDATE users SET is_verified = 1, consent_requested = 0 WHERE id = ?'
+    ).run(id),
+
+  rejectConsent: (id) =>
+    getDb().prepare(
+      'UPDATE users SET consent_requested = 0 WHERE id = ?'
+    ).run(id),
+
+  getPendingConsents: () =>
+    getDb().prepare(
+      "SELECT * FROM users WHERE age_category = 'child' AND consent_requested = 1 AND is_verified = 0 ORDER BY created_at DESC"
+    ).all(),
+
+  getAllUsers: () =>
+    getDb().prepare(
+      'SELECT * FROM users WHERE is_admin = 0 ORDER BY created_at DESC'
+    ).all()
 };
 
 const MagicTokenModel = {
@@ -163,9 +237,12 @@ const ClassModel = {
     getDb().prepare(`
       SELECT c.*,
         (SELECT COUNT(DISTINCT b.id) FROM bookings b WHERE b.class_id = c.id) as booking_count,
-        (SELECT COALESCE(SUM(
-          (SELECT COUNT(*) FROM participants p WHERE p.booking_id = b2.id)
-        ), 0) FROM bookings b2 WHERE b2.class_id = c.id) as participants_count
+        (SELECT COUNT(*) FROM participants p
+          JOIN bookings b2 ON p.booking_id = b2.id
+          WHERE b2.class_id = c.id AND p.age_category = 'adult') as adult_taken,
+        (SELECT COUNT(*) FROM participants p
+          JOIN bookings b2 ON p.booking_id = b2.id
+          WHERE b2.class_id = c.id AND p.age_category = 'child') as child_taken
       FROM classes c
       ORDER BY c.start_time ASC
     `).all(),
@@ -173,9 +250,12 @@ const ClassModel = {
   getUpcoming: () =>
     getDb().prepare(`
       SELECT c.*,
-        (SELECT COALESCE(SUM(
-          (SELECT COUNT(*) FROM participants p WHERE p.booking_id = b.id)
-        ), 0) FROM bookings b WHERE b.class_id = c.id) as taken_spots
+        (SELECT COUNT(*) FROM participants p
+          JOIN bookings b ON p.booking_id = b.id
+          WHERE b.class_id = c.id AND p.age_category = 'adult') as adult_taken,
+        (SELECT COUNT(*) FROM participants p
+          JOIN bookings b ON p.booking_id = b.id
+          WHERE b.class_id = c.id AND p.age_category = 'child') as child_taken
       FROM classes c
       WHERE c.start_time > CURRENT_TIMESTAMP AND c.is_cancelled = 0
       ORDER BY c.start_time ASC
@@ -184,25 +264,30 @@ const ClassModel = {
   getById: (id) =>
     getDb().prepare(`
       SELECT c.*,
-        (SELECT COALESCE(SUM(
-          (SELECT COUNT(*) FROM participants p WHERE p.booking_id = b.id)
-        ), 0) FROM bookings b WHERE b.class_id = c.id) as taken_spots
+        (SELECT COUNT(*) FROM participants p
+          JOIN bookings b ON p.booking_id = b.id
+          WHERE b.class_id = c.id AND p.age_category = 'adult') as adult_taken,
+        (SELECT COUNT(*) FROM participants p
+          JOIN bookings b ON p.booking_id = b.id
+          WHERE b.class_id = c.id AND p.age_category = 'child') as child_taken
       FROM classes c WHERE c.id = ?
     `).get(id),
 
   create: (data) =>
     getDb().prepare(`
-      INSERT INTO classes (name, description, start_time, duration_min, max_spots, instructor, category)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO classes (name, description, start_time, duration_min, class_type, max_spots, max_child_spots, instructor, child_instructor, category)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(data.name, data.description, data.startTime, data.durationMin || 90,
-           data.maxSpots, data.instructor, data.category || 'mixed'),
+           data.classType || 'adult_only', data.maxSpots, data.maxChildSpots || 0,
+           data.instructor, data.childInstructor || '', data.category || 'adults'),
 
   update: (id, data) =>
     getDb().prepare(`
       UPDATE classes SET name=?, description=?, start_time=?, duration_min=?,
-        max_spots=?, instructor=?, category=? WHERE id=?
+        class_type=?, max_spots=?, max_child_spots=?, instructor=?, child_instructor=?, category=? WHERE id=?
     `).run(data.name, data.description, data.startTime, data.durationMin,
-           data.maxSpots, data.instructor, data.category, id),
+           data.classType, data.maxSpots, data.maxChildSpots || 0,
+           data.instructor, data.childInstructor || '', data.category, id),
 
   cancel: (id) =>
     getDb().prepare('UPDATE classes SET is_cancelled = 1 WHERE id = ?').run(id),
@@ -217,14 +302,15 @@ const BookingModel = {
       'SELECT * FROM bookings WHERE user_id = ? AND class_id = ?'
     ).get(userId, classId),
 
-  getParticipantsCount: (classId) => {
+  getSpotCounts: (classId) => {
     const row = getDb().prepare(`
-      SELECT COALESCE(SUM(
-        (SELECT COUNT(*) FROM participants p WHERE p.booking_id = b.id)
-      ), 0) as total
-      FROM bookings b WHERE b.class_id = ?
-    `).get(classId);
-    return row ? row.total : 0;
+      SELECT
+        COALESCE((SELECT COUNT(*) FROM participants p JOIN bookings b ON p.booking_id = b.id
+          WHERE b.class_id = ? AND p.age_category = 'adult'), 0) as adult_taken,
+        COALESCE((SELECT COUNT(*) FROM participants p JOIN bookings b ON p.booking_id = b.id
+          WHERE b.class_id = ? AND p.age_category = 'child'), 0) as child_taken
+    `).get(classId, classId);
+    return row || { adult_taken: 0, child_taken: 0 };
   },
 
   createWithParticipants: (userId, classId, participants) => {
@@ -236,12 +322,17 @@ const BookingModel = {
       const bookingId = booking.lastInsertRowid;
 
       const insertParticipant = getDb().prepare(
-        'INSERT INTO participants (booking_id, first_name, last_name, is_main) VALUES (?, ?, ?, ?)'
+        'INSERT INTO participants (booking_id, first_name, last_name, age_category, is_main) VALUES (?, ?, ?, ?, ?)'
       );
 
       for (let i = 0; i < participants.length; i++) {
-        insertParticipant.run(bookingId, participants[i].firstName,
-                              participants[i].lastName, i === 0 ? 1 : 0);
+        insertParticipant.run(
+          bookingId,
+          participants[i].firstName,
+          participants[i].lastName,
+          participants[i].ageCategory || 'adult',
+          participants[i].isMain ? 1 : 0
+        );
       }
 
       return bookingId;
@@ -270,7 +361,7 @@ const BookingModel = {
 
   getUserBookings: (userId) =>
     getDb().prepare(`
-      SELECT b.*, c.name, c.start_time, c.duration_min, c.instructor, c.category
+      SELECT b.*, c.name, c.start_time, c.duration_min, c.instructor, c.category, c.class_type, c.child_instructor
       FROM bookings b
       JOIN classes c ON b.class_id = c.id
       WHERE b.user_id = ?

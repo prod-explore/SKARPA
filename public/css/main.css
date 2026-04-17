@@ -1155,3 +1155,93 @@ h3 { font-size: clamp(1.1rem, 2.5vw, 1.4rem); }
   text-decoration: underline;
 }
 .emergency-link:hover { color: var(--primary-dark); }
+
+/* --- AGE CATEGORY SELECTOR --- */
+.age-category-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+@media (max-width: 500px) {
+  .age-category-selector { grid-template-columns: 1fr; }
+}
+.age-option { cursor: pointer; }
+.age-option input[type="radio"] { display: none; }
+.age-option-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+  padding: 1.25rem 1rem;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  transition: all 0.18s ease;
+}
+.age-option input[type="radio"]:checked + .age-option-card {
+  border-color: var(--primary);
+  background: var(--primary-pale);
+  box-shadow: 0 0 0 3px rgba(45,90,61,0.12);
+}
+.age-option-card:hover {
+  border-color: var(--primary-light);
+  transform: translateY(-2px);
+}
+.age-option-icon { font-size: 2rem; }
+.age-option-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--text);
+}
+.age-option-desc {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* --- CONSENT BLOCK (Blokada dla niezweryfikowanych dzieci) --- */
+.consent-block {
+  text-align: center;
+  padding: 3rem 2rem;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  border: 2px solid var(--border);
+  max-width: 560px;
+  margin: 2rem auto;
+}
+.consent-block-icon { font-size: 3.5rem; margin-bottom: 1rem; }
+.consent-block h2 { margin-bottom: 0.75rem; }
+.consent-block p { color: var(--text-muted); margin-bottom: 0.75rem; line-height: 1.7; font-size: 0.95rem; }
+.consent-status { margin-top: 1.5rem; }
+.consent-contact { margin-top: 2rem; font-size: 0.85rem; color: var(--text-light); }
+.consent-contact a { color: var(--primary); font-weight: 600; }
+
+/* --- SPOTS INFO BOX (podwójne paski na stronie zapisu) --- */
+.spots-info-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--primary-pale);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  margin-top: 1rem;
+  font-size: 0.9rem;
+}
+.spots-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.spots-info-row strong { font-family: 'Barlow Condensed', sans-serif; font-size: 1rem; }
+
+/* Spots rows na kafelkach zajęć */
+.class-card-spots { display: flex; flex-direction: column; gap: 3px; margin-top: 0.5rem; }
+.spots-row { font-size: 0.82rem; color: var(--text-muted); }
+
+/* Badge info */
+.badge--info { background: #dbeafe; color: #1d4ed8; }
+

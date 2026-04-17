@@ -135,7 +135,7 @@ router.get('/profile/complete', requireAuth, (req, res) => {
 // POST /profile/complete — Zapis danych profilu
 // ============================================================
 router.post('/profile/complete', requireAuth, (req, res) => {
-  const { firstName, lastName, next: nextUrl } = req.body;
+  const { firstName, lastName, ageCategory, next: nextUrl } = req.body;
 
   if (!firstName?.trim() || !lastName?.trim()) {
     return res.render('user/complete-profile', {
@@ -145,13 +145,19 @@ router.post('/profile/complete', requireAuth, (req, res) => {
     });
   }
 
-  UserModel.updateProfile(req.user.id, firstName.trim(), lastName.trim());
+  if (!ageCategory || !['adult', 'child'].includes(ageCategory)) {
+    return res.render('user/complete-profile', {
+      title: 'Uzupełnij profil',
+      next: nextUrl || '/dashboard',
+      error: 'Wybierz kategorię wiekową.'
+    });
+  }
+
+  UserModel.updateProfile(req.user.id, firstName.trim(), lastName.trim(), ageCategory);
 
   // Odśwież dane w cookie
-  const { UserModel: UM } = require('../models/database');
-  const updatedUser = UM.findById(req.user.id);
-  const { setAuthCookie: sac } = require('../middleware/auth');
-  sac(res, updatedUser);
+  const updatedUser = UserModel.findById(req.user.id);
+  setAuthCookie(res, updatedUser);
 
   return res.redirect(nextUrl || '/dashboard');
 });

@@ -1,6 +1,8 @@
 /**
  * admin.routes.js — Panel administratora
  * Admin loguje się magic linkiem na adres wspinanie.ue@gmail.com
+ *
+ * v2 — Podwójne limity, zarządzanie zgodami
  */
 
 const express = require('express');
@@ -22,7 +24,7 @@ function ensureAdminAccount() {
     adminUser = UserModel.findByEmail(ADMIN_EMAIL);
   }
   if (!adminUser.is_admin) {
-    getDb().prepare('UPDATE users SET is_admin = 1 WHERE id = ?').run(adminUser.id);
+    getDb().prepare('UPDATE users SET is_admin = 1, is_verified = 1, age_category = ? WHERE id = ?').run('adult', adminUser.id);
     adminUser = UserModel.findById(adminUser.id);
   }
   return adminUser;
@@ -78,13 +80,15 @@ router.post('/admin/login', adminLoginLimiter, async (req, res) => {
 router.get('/admin', requireAdmin, (req, res) => {
   const classes = ClassModel.getAll();
   const totalClasses = classes.length;
-  const totalParticipants = classes.reduce((s, c) => s + (c.participants_count || 0), 0);
+  const totalParticipants = classes.reduce((s, c) => s + (c.adult_taken || 0) + (c.child_taken || 0), 0);
   const upcomingCount = classes.filter(c => new Date(c.start_time) > new Date() && !c.is_cancelled).length;
+  const pendingConsents = UserModel.getPendingConsents().length;
 
   res.render('admin/dashboard', {
     title: 'Panel Administracyjny',
     classes,
     stats: { totalClasses, totalParticipants, upcomingCount },
+    pendingConsents,
     user: req.user,
     success: req.query.success || null,
     error: req.query.error || null
@@ -102,7 +106,7 @@ router.get('/admin/classes/new', requireAdmin, (req, res) => {
 // POST /admin/classes — Utwórz
 // ============================================================
 router.post('/admin/classes', requireAdmin, (req, res) => {
-  const { name, description, startTime, durationMin, maxSpots, instructor, category } = req.body;
+  const { name, description, startTime, durationMin, classType, maxSpots, maxChildSpots, instructor, childInstructor } = req.body;
 
   if (!name?.trim() || !startTime || !maxSpots) {
     return res.render('admin/class-form', {
@@ -114,8 +118,12 @@ router.post('/admin/classes', requireAdmin, (req, res) => {
   ClassModel.create({
     name: name.trim(), description: description?.trim() || '',
     startTime, durationMin: parseInt(durationMin) || 90,
-    maxSpots: parseInt(maxSpots), instructor: instructor?.trim() || '',
-    category: category || 'mixed'
+    classType: classType || 'adult_only',
+    maxSpots: parseInt(maxSpots),
+    maxChildSpots: classType === 'adult_and_child' ? (parseInt(maxChildSpots) || 0) : 0,
+    instructor: instructor?.trim() || '',
+    childInstructor: classType === 'adult_and_child' ? (childInstructor?.trim() || '') : '',
+    category: classType === 'adult_and_child' ? 'mixed' : 'adults'
   });
 
   return res.redirect('/admin?success=Zajęcia+dodane+pomyślnie');
@@ -134,18 +142,23 @@ router.get('/admin/classes/:id/edit', requireAdmin, (req, res) => {
 // POST /admin/classes/:id — Aktualizuj
 // ============================================================
 router.post('/admin/classes/:id', requireAdmin, (req, res) => {
-  const { name, description, startTime, durationMin, maxSpots, instructor, category } = req.body;
+  const { name, description, startTime, durationMin, classType, maxSpots, maxChildSpots, instructor, childInstructor } = req.body;
   const classData = ClassModel.getById(req.params.id);
   if (!classData) return res.redirect('/admin?error=Nie+znaleziono+zajęć');
+
+  const ct = classType || classData.class_type;
 
   ClassModel.update(req.params.id, {
     name: name?.trim() || classData.name,
     description: description?.trim() || '',
     startTime: startTime || classData.start_time,
     durationMin: parseInt(durationMin) || classData.duration_min,
+    classType: ct,
     maxSpots: parseInt(maxSpots) || classData.max_spots,
+    maxChildSpots: ct === 'adult_and_child' ? (parseInt(maxChildSpots) || 0) : 0,
     instructor: instructor?.trim() || '',
-    category: category || classData.category
+    childInstructor: ct === 'adult_and_child' ? (childInstructor?.trim() || '') : '',
+    category: ct === 'adult_and_child' ? 'mixed' : 'adults'
   });
 
   return res.redirect('/admin?success=Zajęcia+zaktualizowane');
@@ -187,6 +200,46 @@ router.get('/admin/classes/:id/attendance', requireAdmin, (req, res) => {
     title: `Lista: ${classData.name}`,
     classData, bookings: bookingsWithParticipants, allParticipants, user: req.user
   });
+});
+
+// ============================================================
+// GET /admin/consents — Zarządzanie zgodami
+// ============================================================
+router.get('/admin/consents', requireAdmin, (req, res) => {
+  const pendingUsers = UserModel.getPendingConsents();
+  const allUsers = UserModel.getAllUsers();
+  const verifiedChildren = allUsers.filter(u => u.age_category === 'child' && u.is_verified);
+
+  res.render('admin/consents', {
+    title: 'Zarządzanie zgodami',
+    pendingUsers,
+    verifiedChildren,
+    user: req.user,
+    success: req.query.success || null,
+    error: req.query.error || null
+  });
+});
+
+// ============================================================
+// POST /admin/consents/:id/approve — Zatwierdź zgodę
+// ============================================================
+router.post('/admin/consents/:id/approve', requireAdmin, (req, res) => {
+  const targetUser = UserModel.findById(req.params.id);
+  if (!targetUser) return res.redirect('/admin/consents?error=Nie+znaleziono+użytkownika');
+
+  UserModel.approveConsent(targetUser.id);
+  res.redirect('/admin/consents?success=Zgoda+zatwierdzona+dla+' + encodeURIComponent(targetUser.first_name + ' ' + targetUser.last_name));
+});
+
+// ============================================================
+// POST /admin/consents/:id/reject — Odrzuć zgodę
+// ============================================================
+router.post('/admin/consents/:id/reject', requireAdmin, (req, res) => {
+  const targetUser = UserModel.findById(req.params.id);
+  if (!targetUser) return res.redirect('/admin/consents?error=Nie+znaleziono+użytkownika');
+
+  UserModel.rejectConsent(targetUser.id);
+  res.redirect('/admin/consents?success=Prośba+odrzucona');
 });
 
 module.exports = router;

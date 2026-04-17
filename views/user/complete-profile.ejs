@@ -3,7 +3,7 @@
 <div class="auth-page">
   <div class="auth-side auth-side--visual">
     <div class="auth-visual-content">
-      <a href="/" class="auth-brand">🧗 SKARPA BYTOM</a>
+      <a href="/" class="auth-brand">🧗 PANEL UCZESTNIKA</a>
       <div class="auth-visual-tagline">
         <h2>Prawie gotowe!</h2>
         <p>Uzupełnij swój profil, aby zapisywać się na zajęcia.</p>
@@ -14,7 +14,7 @@
   <div class="auth-side auth-side--form">
     <div class="auth-form-wrapper">
       <h1 class="auth-title">Uzupełnij profil</h1>
-      <p class="auth-subtitle">Podaj swoje imię i nazwisko. Potrzebujemy ich do listy uczestników.</p>
+      <p class="auth-subtitle">Podaj swoje dane. Potrzebujemy ich do listy uczestników.</p>
 
       <% if (typeof error !== 'undefined' && error) { %>
         <div class="alert alert--error"><%= error %></div>
@@ -33,6 +33,28 @@
             <label for="lastName" class="form-label">Nazwisko *</label>
             <input type="text" id="lastName" name="lastName" class="form-input"
                    placeholder="Kowalski" required autocomplete="family-name">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Kategoria wiekowa *</label>
+          <div class="age-category-selector">
+            <label class="age-option">
+              <input type="radio" name="ageCategory" value="adult" required checked>
+              <span class="age-option-card">
+                <span class="age-option-icon">🧑</span>
+                <span class="age-option-label">Osoba dorosła (18+)</span>
+                <span class="age-option-desc">Pełnoletni uczestnik — zapisy od ręki</span>
+              </span>
+            </label>
+            <label class="age-option">
+              <input type="radio" name="ageCategory" value="child">
+              <span class="age-option-card">
+                <span class="age-option-icon">👦</span>
+                <span class="age-option-label">Osoba niepełnoletnia (7–17)</span>
+                <span class="age-option-desc">Wymagana zgoda rodzica przed zapisami</span>
+              </span>
+            </label>
           </div>
         </div>
 

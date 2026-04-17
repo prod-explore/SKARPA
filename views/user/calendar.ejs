@@ -27,9 +27,8 @@
     <!-- Filtry kategorii -->
     <div class="category-filters">
       <button class="filter-btn active" data-filter="all">Wszystkie</button>
-      <button class="filter-btn" data-filter="kids">👶 Dzieci</button>
-      <button class="filter-btn" data-filter="adults">🧑 Dorośli</button>
-      <button class="filter-btn" data-filter="mixed">👥 Mieszane</button>
+      <button class="filter-btn" data-filter="adults">🧑 Tylko dorośli</button>
+      <button class="filter-btn" data-filter="mixed">👥 Dorośli + Dzieci</button>
     </div>
 
     <% if (classes.length === 0) { %>
@@ -51,7 +50,6 @@
             const monthKey = date.toLocaleDateString('pl-PL', { year: 'numeric', month: 'long' });
             const dateStr = date.toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' });
             const timeStr = date.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
-            const left = cls.max_spots - (cls.taken_spots || 0);
           %>
 
           <% if (monthKey !== currentMonth) { %>
@@ -82,7 +80,7 @@
                 <span>⏱ <%= cls.duration_min %> min</span>
                 <% if (cls.instructor) { %><span>👤 <%= cls.instructor %></span><% } %>
                 <span class="cal-category-tag">
-                  <%= cls.category === 'kids' ? '👶 Dzieci' : cls.category === 'adults' ? '🧑 Dorośli' : '👥 Mieszane' %>
+                  <%= cls.class_type === 'adult_and_child' ? '👥 D+Dz' : '🧑 Dorośli' %>
                 </span>
               </div>
             </div>
@@ -90,12 +88,22 @@
             <div class="cal-spots">
               <div class="spots-bar-wrap">
                 <div class="spots-bar">
-                  <div class="spots-bar-fill" style="width: <%= Math.round((cls.taken_spots || 0) / cls.max_spots * 100) %>%"></div>
+                  <div class="spots-bar-fill" style="width: <%= Math.round((cls.adult_taken || 0) / cls.max_spots * 100) %>%"></div>
                 </div>
-                <span class="spots-label <%= left <= 3 ? 'spots-label--low' : '' %>">
-                  <%= left > 0 ? `${left}/${cls.max_spots}` : 'Brak' %>
+                <span class="spots-label <%= cls.adultSpotsLeft <= 3 ? 'spots-label--low' : '' %>">
+                  🧑 <%= cls.adultSpotsLeft %>/<%= cls.max_spots %>
                 </span>
               </div>
+              <% if (cls.class_type === 'adult_and_child' && cls.max_child_spots > 0) { %>
+              <div class="spots-bar-wrap" style="margin-top:4px;">
+                <div class="spots-bar">
+                  <div class="spots-bar-fill" style="width: <%= Math.round((cls.child_taken || 0) / cls.max_child_spots * 100) %>%"></div>
+                </div>
+                <span class="spots-label <%= cls.childSpotsLeft <= 3 ? 'spots-label--low' : '' %>">
+                  👦 <%= cls.childSpotsLeft %>/<%= cls.max_child_spots %>
+                </span>
+              </div>
+              <% } %>
             </div>
 
             <div class="cal-action">
