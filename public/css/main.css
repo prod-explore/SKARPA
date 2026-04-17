@@ -9,27 +9,28 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --primary:        #2d5a3d;
-  --primary-dark:   #1a3a2a;
-  --primary-light:  #4a8a5d;
-  --primary-pale:   #f0f7f2;
-  --accent:         #c8f04a;   /* limonkowy akcent wspinaczkowy */
-  --accent-dark:    #a3c832;
+  /* Motyw: Nowoczesny Niebieski */
+  --primary:        #2563eb; /* blue-600 */
+  --primary-dark:   #1e3a8a; /* blue-900 */
+  --primary-light:  #60a5fa; /* blue-400 */
+  --primary-pale:   #eff6ff; /* blue-50 */
+  --accent:         #fde047; /* yellow-300: ożywczy kontrastowy detal */
+  --accent-dark:    #eab308; /* yellow-500 */
 
-  --bg:             #f5f5f0;
+  --bg:             #f8fafc; /* slate-50: jasny, rześki tło */
   --bg-card:        #ffffff;
-  --bg-dark:        #111810;
+  --bg-dark:        #0f172a; /* slate-900 */
 
-  --text:           #1a1a18;
-  --text-muted:     #6b7460;
-  --text-light:     #a0a899;
+  --text:           #0f172a; /* slate-900 */
+  --text-muted:     #64748b; /* slate-500 */
+  --text-light:     #94a3b8; /* slate-400 */
 
-  --border:         #e2e5d8;
-  --border-strong:  #c8ccb8;
+  --border:         #e2e8f0; /* slate-200 */
+  --border-strong:  #cbd5e1; /* slate-300 */
 
-  --danger:         #d93025;
-  --warning:        #e67e22;
-  --success:        #2d7a4a;
+  --danger:         #ef4444; /* red-500 */
+  --warning:        #f59e0b; /* amber-500 */
+  --success:        #10b981; /* emerald-500 */
 
   --radius:         10px;
   --radius-lg:      16px;
@@ -48,6 +49,9 @@ body {
   line-height: 1.6;
   color: var(--text);
   background: var(--bg);
+  /* Mniej jednolite siatkowe tło */
+  background-image: radial-gradient(var(--border) 1px, transparent 1px);
+  background-size: 24px 24px;
 }
 
 img { max-width: 100%; }
@@ -258,8 +262,8 @@ h3 { font-size: clamp(1.1rem, 2.5vw, 1.4rem); }
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse at 80% 20%, rgba(74,138,93,0.15) 0%, transparent 60%),
-    radial-gradient(ellipse at 10% 90%, rgba(29,74,46,0.2) 0%, transparent 50%);
+    radial-gradient(ellipse at 80% 20%, rgba(37,99,235,0.25) 0%, transparent 60%),
+    radial-gradient(ellipse at 10% 90%, rgba(30,58,138,0.4) 0%, transparent 50%);
 }
 
 .hero-content {
@@ -1243,5 +1247,39 @@ h3 { font-size: clamp(1.1rem, 2.5vw, 1.4rem); }
 .spots-row { font-size: 0.82rem; color: var(--text-muted); }
 
 /* Badge info */
-.badge--info { background: #dbeafe; color: #1d4ed8; }
+.badge--info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+
+/* --- INSTRUCTION GRID --- */
+.instruction-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+.instruction-card {
+  background: var(--bg-card);
+  padding: 1.75rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  transition: transform 0.2s;
+}
+.instruction-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--primary-light);
+}
+.instruction-icon {
+  font-size: 2.25rem;
+  margin-bottom: 0.75rem;
+}
+.instruction-card h3 {
+  color: var(--primary-dark);
+  font-size: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+.instruction-card p {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
 

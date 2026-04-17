@@ -71,7 +71,6 @@
             <th>Zapisał(a)</th>
             <th>Data zapisu</th>
             <th class="no-print">E-mail kontaktowy</th>
-            <th>Obecny ✓</th>
           </tr>
         </thead>
         <tbody>
@@ -87,11 +86,10 @@
               <td><%= p.is_main ? '★ Sam/a' : 'Dołączony' %></td>
               <td><%= new Date(p.bookedAt).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) %></td>
               <td class="no-print"><a href="mailto:<%= p.bookerEmail %>"><%= p.bookerEmail %></a></td>
-              <td><span class="attendance-checkbox"></span></td>
             </tr>
           <% }); %>
           <% if (allParticipants.length === 0) { %>
-            <tr><td colspan="7" style="text-align:center;color:#999;padding:2rem;">Brak zapisanych uczestników</td></tr>
+            <tr><td colspan="6" style="text-align:center;color:#999;padding:2rem;">Brak zapisanych uczestników</td></tr>
           <% } %>
         </tbody>
       </table>
