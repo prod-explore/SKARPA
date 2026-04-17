@@ -46,6 +46,26 @@ router.get('/', (req, res) => {
 });
 
 // ============================================================
+// GET /regulamin — Regulamin serwisu
+// ============================================================
+router.get('/regulamin', (req, res) => {
+  res.render('user/terms', {
+    title: 'Regulamin',
+    user: req.user
+  });
+});
+
+// ============================================================
+// GET /polityka-prywatnosci — Polityka Prywatności
+// ============================================================
+router.get('/polityka-prywatnosci', (req, res) => {
+  res.render('user/privacy', {
+    title: 'Polityka Prywatności',
+    user: req.user
+  });
+});
+
+// ============================================================
 // GET /calendar — Publiczny kalendarz zajęć
 // ============================================================
 router.get('/calendar', (req, res) => {

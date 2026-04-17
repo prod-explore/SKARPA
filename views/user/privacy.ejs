@@ -1,0 +1,65 @@
+<%- include('../partials/head') %>
+<%- include('../partials/navbar', { user: typeof user !== 'undefined' ? user : null }) %>
+
+<div class="page-content">
+  <div class="container container--narrow">
+    <div class="document-content">
+      <h1>Polityka Prywatności i RODO</h1>
+      <p><em>Ostatnia aktualizacja: <%= new Date().toLocaleDateString('pl-PL') %></em></p>
+
+      <h2>1. Administrator Danych</h2>
+      <p>Administratorem Twoich danych osobowych zebranych w ramach Systemu Rezerwacji Zajęć Wspinaczkowych jest realizator Projektu Dofinansowanego (zwany dalej "Administratorem").</p>
+
+      <h2>2. Cel i podstawa przetwarzania danych</h2>
+      <p>Przetwarzamy Twoje dane (imię, nazwisko, adres e-mail, kategoria wiekowa) wyłącznie w celu:</p>
+      <ul>
+        <li>Organizacji darmowych zajęć wspinaczkowych w ramach unijnego projektu,</li>
+        <li>Weryfikacji obecności oraz tworzenia raportów na potrzeby instytucji finansującej projekt,</li>
+        <li>Komunikacji e-mailowej dotyczącej zarezerwowanych przez Ciebie zajęć.</li>
+      </ul>
+      <p>Podstawą prawną przetwarzania jest realizacja umowy o świadczenie usług drogą elektroniczną (akceptacja regulaminu systemu), a w przypadku danych wrażliwych – Twoja zgoda.</p>
+
+      <h2>3. Udostępnianie danych</h2>
+      <p>Twoje dane mogą być przekazywane podmiotom upoważnionym do przeprowadzania kontroli projektów współfinansowanych ze środków UE. Nie sprzedajemy danych celom zewnętrznym ani reklamowym. W systemie korzystamy z usługi do e-maili (np. Resend), która działa na rygorystycznych zasadach ochrony danych.</p>
+
+      <h2>4. Twoje Prawa (RODO)</h2>
+      <p>Posiadasz prawo dostępu do treści swoich danych, prawo ich sprostowania, usunięcia, ograniczenia przetwarzania, prawo do przenoszenia danych, prawo wniesienia sprzeciwu. W celu usunięcia konta permanentnie, skontaktuj się z administratorem lub użyj odpowiedniej opcji, gdy zostanie udostępniona w panelu.</p>
+
+      <h2>5. Cookies i Technologie śledzące</h2>
+      <p>Serwis wykorzystuje wyłącznie "ciasteczka" (cookies) techniczne — tzw. ciasteczka sesyjne, które przechowują token uwierzytelniający Twoją rezerwację i zalogowanie. Ciasteczka te są kluczowe dla funkcjonowania systemu i nie są użuwane w celach analitycznych ani reklamowych.</p>
+    </div>
+  </div>
+</div>
+
+<style>
+.document-content {
+  background: var(--bg-card);
+  padding: 3rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  margin: 2rem auto;
+}
+.document-content h1 {
+  font-family: 'Barlow Condensed', sans-serif;
+  color: var(--primary-dark);
+  margin-bottom: 0.5rem;
+}
+.document-content h2 {
+  font-family: 'Barlow Condensed', sans-serif;
+  color: var(--primary);
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+.document-content p, ul {
+  color: var(--text);
+  margin-bottom: 1rem;
+  line-height: 1.7;
+}
+.document-content ul { padding-left: 2rem; }
+.document-content em { color: var(--text-muted); }
+</style>
+
+<%- include('../partials/footer') %>
+</body>
+</html>
