@@ -20,7 +20,7 @@ const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'wspinanie.ue@gmail.com';
 function ensureAdminAccount() {
   let adminUser = UserModel.findByEmail(ADMIN_EMAIL);
   if (!adminUser) {
-    UserModel.create(ADMIN_EMAIL, 'Admin', 'Skarpa');
+    UserModel.create(ADMIN_EMAIL, 'Admin', 'Zajęcia');
     adminUser = UserModel.findByEmail(ADMIN_EMAIL);
   }
   if (!adminUser.is_admin) {

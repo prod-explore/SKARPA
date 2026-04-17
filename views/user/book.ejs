@@ -134,10 +134,7 @@
               <div class="participant-block participant-block--main">
                 <div class="participant-block-header">
                   <span class="participant-number">Osoba 1 (Ty) — 🧑 Dorosły</span>
-                  <label class="checkbox-label">
-                    <input type="checkbox" name="includeSelf" value="true" id="includeSelf" checked>
-                    <span>Zapisz mnie</span>
-                  </label>
+                  <input type="hidden" name="includeSelf" value="true">
                 </div>
                 <div class="participant-main-info">
                   <span class="participant-name-badge">
@@ -194,13 +191,11 @@ const addBtn = document.getElementById('addPersonBtn');
 const extraContainer = document.getElementById('extraParticipants');
 const countEl = document.getElementById('participantCount');
 const spotsWarn = document.getElementById('spotsWarning');
-const selfCheckbox = document.getElementById('includeSelf');
 
 function updateCount() {
   if (!countEl) return;
-  const selfChecked = selfCheckbox ? (selfCheckbox.checked ? 1 : 0) : 0;
   const extras = extraContainer ? extraContainer.querySelectorAll('.participant-block--extra').length : 0;
-  const total = selfChecked + extras;
+  const total = 1 + extras; // Główny zapisujący jest ZAWSZE wliczony
   countEl.textContent = total;
 }
 
@@ -254,8 +249,6 @@ function removeExtra(idx) {
   const el = document.getElementById(`extra_${idx}`);
   if (el) { el.remove(); extraCount--; updateCount(); }
 }
-
-if (selfCheckbox) selfCheckbox.addEventListener('change', updateCount);
 
 updateCount();
 </script>

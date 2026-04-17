@@ -231,16 +231,13 @@ router.post('/book/:classId', requireAuth, requireProfile, apiLimiter, async (re
       isMain: true
     });
   } else {
-    // Dorosły użytkownik
-    const includeSelf = req.body.includeSelf !== 'false';
-    if (includeSelf) {
-      participants.push({
-        firstName: req.user.first_name,
-        lastName: req.user.last_name,
-        ageCategory: 'adult',
-        isMain: true
-      });
-    }
+    // Dorosły użytkownik zawsze zapisuje siebie jako opiekuna/uczestnika
+    participants.push({
+      firstName: req.user.first_name,
+      lastName: req.user.last_name,
+      ageCategory: 'adult',
+      isMain: true
+    });
 
     // Dodatkowe osoby
     const extraFirstNames = [].concat(req.body.extraFirstName || []);
