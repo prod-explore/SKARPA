@@ -21,7 +21,6 @@
       <% } else { %>
         <a href="/login" class="btn btn--primary btn--lg">Zaloguj się →</a>
       <% } %>
-      <a href="#o-projekcie" class="btn btn--outline btn--lg">O projekcie</a>
     </div>
     <div class="hero-stats">
       <div class="hero-stat">
@@ -42,79 +41,8 @@
   </div>
 </div>
 
-<!-- SEKCJA: O PROJEKCIE -->
-<section class="section section--light" id="o-projekcie">
-  <div class="container">
-    <div class="section-header">
-      <span class="section-tag">Dlaczego warto</span>
-      <h2>Wspinaczka dla każdego</h2>
-      <p>Projekt dofinansowany z Unii Europejskiej umożliwia bezpłatny dostęp do profesjonalnych zajęć wspinaczkowych.</p>
-    </div>
 
-    <div class="features-grid">
-      <div class="feature-card">
-        <div class="feature-icon">🆓</div>
-        <h3>Całkowicie bezpłatnie</h3>
-        <p>Zajęcia są w 100% finansowane ze środków UE. Nie pobieramy żadnych opłat od uczestników.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">👨‍👩‍👧‍👦</div>
-        <h3>Dla całej rodziny</h3>
-        <p>Osobne grupy dla dzieci (7–14 lat) i dorosłych. Instruktorzy z certyfikatami PZA.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">🎒</div>
-        <h3>Sprzęt w cenie</h3>
-        <p>Buty, uprzęże, kask — wszystko jest dostępne na miejscu. Przychodź w wygodnych ubraniach.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">📅</div>
-        <h3>Regularne terminy</h3>
-        <p>Zajęcia w tygodniu i weekendy. Zapisy otwierają się 7 dni przed każdymi zajęciami.</p>
-      </div>
-    </div>
-  </div>
-</section>
 
-<!-- SEKCJA: DZIECI vs DOROŚLI -->
-<section class="section section--split">
-  <div class="split-panel split-panel--kids">
-    <div class="split-content">
-      <div class="split-tag">Dla dzieci</div>
-      <h2>Zajęcia dziecięce</h2>
-      <p>Wiek 7–14 lat. Nauka podstaw wspinaczki w bezpiecznym środowisku pod okiem certyfikowanych instruktorów.</p>
-      <ul class="split-list">
-        <li>✓ Grupy max 10 osób</li>
-        <li>✓ Sprzęt dostosowany do wzrostu</li>
-        <li>✓ Elementy gier i zabaw</li>
-        <li>✓ Certyfikat ukończenia</li>
-      </ul>
-      <% if (typeof user !== 'undefined' && user) { %>
-        <a href="/dashboard" class="btn btn--white">Zarezerwuj →</a>
-      <% } else { %>
-        <a href="/login" class="btn btn--white">Zaloguj się, aby zapisać →</a>
-      <% } %>
-    </div>
-  </div>
-  <div class="split-panel split-panel--adults">
-    <div class="split-content">
-      <div class="split-tag">Dla dorosłych</div>
-      <h2>Zajęcia dla dorosłych</h2>
-      <p>Wiek 18+. Od zupełnych początkujących po zaawansowanych techniki prowadzenia.</p>
-      <ul class="split-list">
-        <li>✓ Grupy max 12 osób</li>
-        <li>✓ Różne poziomy trudności</li>
-        <li>✓ Techniki asekuracji</li>
-        <li>✓ Trening siłowy wspinaczkowy</li>
-      </ul>
-      <% if (typeof user !== 'undefined' && user) { %>
-        <a href="/dashboard" class="btn btn--white">Zarezerwuj →</a>
-      <% } else { %>
-        <a href="/login" class="btn btn--white">Zaloguj się, aby zapisać →</a>
-      <% } %>
-    </div>
-  </div>
-</section>
 
 <!-- SEKCJA: NAJBLIŻSZE TERMINY -->
 <% if (upcomingClasses.length > 0) { %>
