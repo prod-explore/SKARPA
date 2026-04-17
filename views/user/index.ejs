@@ -3,43 +3,33 @@
 <%- include('../partials/navbar', { user: user }) %>
 
 <!-- HERO -->
-<section class="hero">
-  <div class="hero-bg">
-    <div class="hero-rock hero-rock--1"></div>
-    <div class="hero-rock hero-rock--2"></div>
-    <div class="hero-rock hero-rock--3"></div>
-  </div>
+<section class="hero" id="hero-panel">
+  <div class="hero-bg"></div>
   <div class="hero-content">
     <div class="hero-badge">🇪🇺 Projekt UE — Bezpłatnie</div>
     <h1 class="hero-title">
-      Zacznij się<br>
-      <span class="hero-title--accent">wspinać</span><br>
-      za darmo
+      Panel<br>
+      <span class="hero-title--accent">Uczestnika</span>
     </h1>
     <p class="hero-subtitle">
-      Darmowe zajęcia wspinaczkowe dla dzieci i dorosłych<br>
-      w obiekcie Skarpa Bytom. Bez doświadczenia, bez opłat.
+      Darmowe zajęcia wspinaczkowe dla uczestników projektu.<br>
+      Zarządzaj swoimi rezerwacjami na zajęcia w Skarpa Bytom.
     </p>
     <div class="hero-actions">
-      <a href="/calendar" class="btn btn--primary btn--lg">Zobacz terminy →</a>
-      <a href="#o-projekcie" class="btn btn--outline btn--lg">Dowiedz się więcej</a>
+      <% if (typeof user !== 'undefined' && user) { %>
+        <a href="/dashboard" class="btn btn--primary btn--lg">Przejdź do panelu →</a>
+      <% } else { %>
+        <a href="/login" class="btn btn--primary btn--lg">Zaloguj się →</a>
+      <% } %>
+      <a href="#o-projekcie" class="btn btn--outline btn--lg">O projekcie</a>
     </div>
     <div class="hero-stats">
       <div class="hero-stat">
         <span class="hero-stat-num">0 zł</span>
-        <span class="hero-stat-label">Koszt uczestnictwa</span>
-      </div>
-      <div class="hero-stat">
-        <span class="hero-stat-num">90 min</span>
-        <span class="hero-stat-label">Każde zajęcia</span>
-      </div>
-      <div class="hero-stat">
-        <span class="hero-stat-num">5+</span>
-        <span class="hero-stat-label">Lat doświadczenia</span>
+        <span class="hero-stat-label">Koszt udziału</span>
       </div>
     </div>
   </div>
-  <div class="hero-scroll-hint">↓</div>
 </section>
 
 
@@ -99,7 +89,11 @@
         <li>✓ Elementy gier i zabaw</li>
         <li>✓ Certyfikat ukończenia</li>
       </ul>
-      <a href="/calendar" class="btn btn--white">Zapisz dziecko →</a>
+      <% if (typeof user !== 'undefined' && user) { %>
+        <a href="/dashboard" class="btn btn--white">Zarezerwuj →</a>
+      <% } else { %>
+        <a href="/login" class="btn btn--white">Zaloguj się, aby zapisać →</a>
+      <% } %>
     </div>
   </div>
   <div class="split-panel split-panel--adults">
@@ -113,7 +107,11 @@
         <li>✓ Techniki asekuracji</li>
         <li>✓ Trening siłowy wspinaczkowy</li>
       </ul>
-      <a href="/calendar" class="btn btn--white">Zapisz się →</a>
+      <% if (typeof user !== 'undefined' && user) { %>
+        <a href="/dashboard" class="btn btn--white">Zarezerwuj →</a>
+      <% } else { %>
+        <a href="/login" class="btn btn--white">Zaloguj się, aby zapisać →</a>
+      <% } %>
     </div>
   </div>
 </section>
@@ -177,23 +175,22 @@
 <section class="section section--map">
   <div class="container">
     <div class="section-header">
-      <span class="section-tag">Jak dotrzeć</span>
-      <h2>Znajdź nas w Bytomiu</h2>
+      <span class="section-tag">Gdzie ćwiczymy</span>
+      <h2>Skarpa Bytom Rozbark</h2>
     </div>
     <div class="map-wrapper">
       <iframe
-        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2545.0!2d18.9140!3d50.3498!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2sBytom!5e0!3m2!1spl!2spl!4v1"
+        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2546.284345570785!2d18.928098576550873!3d50.34260167157167!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x4716d34cb979d97f%3A0x55caf8fee26a2016!2sSkarpa%20Bytom%20Rozbark!5e0!3m2!1spl!2spl!4v1776429791392!5m2!1spl!2spl"
         width="100%" height="400" style="border:0;border-radius:12px;"
         allowfullscreen="" loading="lazy"
         referrerpolicy="no-referrer-when-downgrade"
-        title="Mapa — Skarpa Bytom">
+        title="Skarpa Bytom Rozbark">
       </iframe>
       <div class="map-info-card">
-        <h4>📍 Skarpa Bytom</h4>
-        <p>ul. Wspinaczkowa 1<br>41-900 Bytom</p>
-        <p>🚗 Parking bezpłatny<br>🚌 Autobus nr 12, 34</p>
-        <a href="https://maps.google.com/?q=Bytom+Wspinaczka" target="_blank" rel="noopener" class="btn btn--primary btn--sm">
-          Nawiguj →
+        <h4>📍 KS "Skarpa Bytom"</h4>
+        <p>Klub Sportowy<br>Skarpa Bytom Rozbark</p>
+        <a href="https://maps.google.com/maps?ll=50.342602,18.9281&z=16&t=m&hl=pl&gl=PL&mapclient=embed&cid=6182064567221362710" target="_blank" rel="noopener" class="btn btn--primary btn--sm">
+          Naviguj w Google Maps →
         </a>
       </div>
     </div>
@@ -205,11 +202,15 @@
   <div class="container">
     <div class="cta-box">
       <div class="cta-content">
-        <h2>Gotowy na pierwsze wejście?</h2>
-        <p>Rejestracja zajmuje 30 sekund. Wystarczy e-mail.</p>
+        <h2>Gotowy na zajęcia?</h2>
+        <p>Zaloguj się do panelu i zarządzaj zapisanymi osobami.</p>
       </div>
       <div class="cta-actions">
-        <a href="/login" class="btn btn--white btn--lg">Zarejestruj się →</a>
+        <% if (typeof user !== 'undefined' && user) { %>
+          <a href="/dashboard" class="btn btn--white btn--lg">Twój Panel →</a>
+        <% } else { %>
+          <a href="/login" class="btn btn--white btn--lg">Zaloguj się / Zarejestruj →</a>
+        <% } %>
       </div>
     </div>
   </div>
