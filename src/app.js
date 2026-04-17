@@ -33,6 +33,7 @@ initEmailService().catch(err => console.warn('Email init warning:', err.message)
 // ============================================================
 // Middleware globalny
 // ============================================================
+app.set('trust proxy', 1);
 app.use(helmetConfig);
 app.use(compression());
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
@@ -112,7 +113,7 @@ app.listen(PORT, '0.0.0.0', () => {
   ║   🧗 SKARPA BYTOM — System Rejestracji  ║
   ║   Projekt dofinansowany z UE             ║
   ╠══════════════════════════════════════════╣
-  ║   Adres:  http://localhost:${PORT}          ║
+  ║   Adres:  ${(process.env.APP_URL || `http://localhost:${PORT}`).padEnd(25)}║
   ║   Środow: ${(process.env.NODE_ENV || 'development').padEnd(32)}║
   ╚══════════════════════════════════════════╝
   `);
