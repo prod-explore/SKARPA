@@ -33,6 +33,10 @@
 
       <% if (!(typeof success !== 'undefined' && success)) { %>
       <form action="/admin/login" method="POST" class="auth-form">
+        <div class="form-group" style="display:none;" aria-hidden="true">
+          <label class="form-label">Website</label>
+          <input type="text" name="website" tabindex="-1" autocomplete="off">
+        </div>
         <div class="form-group">
           <label class="form-label">Adres e-mail administratora</label>
           <input
@@ -52,7 +56,7 @@
       <% } else { %>
         <div class="email-sent-hint">
           <div class="email-sent-icon">✉️</div>
-          <p>Sprawdź skrzynkę <strong>wspinanie.ue@gmail.com</strong>.<br>Link jest ważny 15 minut.</p>
+          <p>Sprawdź swoją skrzynkę e-mail.<br>Link jest ważny 15 minut.</p>
           <a href="/admin/login" class="btn btn--outline btn--sm" style="margin-top:1rem;">Wyślij ponownie</a>
         </div>
       <% } %>

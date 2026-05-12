@@ -40,6 +40,11 @@
       <form action="/auth/request" method="POST" class="auth-form">
         <input type="hidden" name="next" value="<%= typeof next !== 'undefined' ? next : '/dashboard' %>">
 
+        <div class="form-group" style="display:none;" aria-hidden="true">
+          <label for="website" class="form-label">Website</label>
+          <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
+        </div>
+
         <div class="form-group">
           <label for="email" class="form-label">Adres e-mail</label>
           <input

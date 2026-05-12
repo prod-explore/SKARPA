@@ -29,7 +29,18 @@ router.get('/login', (req, res) => {
 // POST /auth/request — Żądanie magic linku
 // ============================================================
 router.post('/auth/request', magicLinkLimiter, async (req, res) => {
-  const { email, next: nextUrl } = req.body;
+  const { email, next: nextUrl, website } = req.body;
+
+  // Honeypot check
+  if (website) {
+    console.warn(`[HONEYPOT] Bot detected from ${req.ip} in login form`);
+    return res.render('user/login', {
+      title: 'Logowanie',
+      next: nextUrl || '/dashboard',
+      error: null,
+      success: `Link logowania wysłany na ${email || 'podany adres'}. Sprawdź skrzynkę!`
+    });
+  }
 
   // Walidacja e-maila
   if (!email || !validator.isEmail(email)) {

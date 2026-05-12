@@ -23,7 +23,7 @@ const generalLimiter = rateLimit({
 const magicLinkLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 godzina
   max: parseInt(process.env.MAGIC_LINK_RATE_LIMIT_MAX) || 5,
-  keyGenerator: (req) => req.body?.email || req.ip,
+  keyGenerator: (req) => req.ip,
   message: { error: 'Wysłano już kilka linków. Sprawdź skrzynkę lub spróbuj za godzinę.' },
   standardHeaders: true,
   legacyHeaders: false

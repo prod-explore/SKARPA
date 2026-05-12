@@ -14,14 +14,15 @@ const { requireAdmin, setAuthCookie, createMagicLink } = require('../middleware/
 const { adminLoginLimiter } = require('../middleware/security');
 const { sendMagicLink } = require('../services/emailService');
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'wspinanie.ue@gmail.com';
+const envAdmins = process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || 'explore.wrld.rld@gmail.com,wspinanie.ue@gmail.com';
+const ADMIN_EMAILS = envAdmins.split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
 
 // Upewnij się, że konto admina istnieje i ma flagę is_admin=1
-function ensureAdminAccount() {
-  let adminUser = UserModel.findByEmail(ADMIN_EMAIL);
+function ensureAdminAccount(email) {
+  let adminUser = UserModel.findByEmail(email);
   if (!adminUser) {
-    UserModel.create(ADMIN_EMAIL, 'Admin', 'Zajęcia');
-    adminUser = UserModel.findByEmail(ADMIN_EMAIL);
+    UserModel.create(email, 'Admin', 'Zajęcia');
+    adminUser = UserModel.findByEmail(email);
   }
   if (!adminUser.is_admin) {
     getDb().prepare('UPDATE users SET is_admin = 1, is_verified = 1, age_category = ? WHERE id = ?').run('adult', adminUser.id);
@@ -29,6 +30,9 @@ function ensureAdminAccount() {
   }
   return adminUser;
 }
+
+// Inicjalizuj wszystkie konta administratorów z listy
+ADMIN_EMAILS.forEach(ensureAdminAccount);
 
 // ============================================================
 // GET /admin/login
@@ -42,10 +46,23 @@ router.get('/admin/login', (req, res) => {
 // POST /admin/login — Wyślij magic link na adres admina
 // ============================================================
 router.post('/admin/login', adminLoginLimiter, async (req, res) => {
-  const { email } = req.body;
+  const { email, website } = req.body;
+
+  // Honeypot check
+  if (website) {
+    console.warn(`[HONEYPOT] Bot detected from ${req.ip} in admin login form`);
+    return res.render('admin/login', {
+      title: 'Panel Admina — Logowanie',
+      error: null,
+      success: `Link logowania wysłany na podany adres. Sprawdź skrzynkę!`
+    });
+  }
+
+  const normalizedEmail = email ? validator.normalizeEmail(email) : '';
+  const isValidAdmin = ADMIN_EMAILS.some(e => validator.normalizeEmail(e) === normalizedEmail);
 
   // Weryfikuj że to właściwy adres admina
-  if (!email || validator.normalizeEmail(email) !== validator.normalizeEmail(ADMIN_EMAIL)) {
+  if (!email || !isValidAdmin) {
     return res.render('admin/login', {
       title: 'Panel Admina — Logowanie',
       error: `Podany adres nie jest adresem administratora.`,
@@ -54,15 +71,15 @@ router.post('/admin/login', adminLoginLimiter, async (req, res) => {
   }
 
   try {
-    const adminUser = ensureAdminAccount();
+    const adminUser = ensureAdminAccount(normalizedEmail);
     MagicTokenModel.cleanExpired();
     const { magicLink } = createMagicLink(adminUser.id);
-    await sendMagicLink(ADMIN_EMAIL, magicLink, false);
+    await sendMagicLink(normalizedEmail, magicLink, false);
 
     return res.render('admin/login', {
       title: 'Panel Admina — Logowanie',
       error: null,
-      success: `Link logowania wysłany na ${ADMIN_EMAIL}. Sprawdź skrzynkę!`
+      success: `Link logowania wysłany na podany adres. Sprawdź skrzynkę!`
     });
   } catch (err) {
     console.error('Błąd wysyłki magic link (admin):', err);
