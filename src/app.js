@@ -17,10 +17,6 @@ const { initEmailService } = require('./services/emailService');
 const { loadUser } = require('./middleware/auth');
 const { generalLimiter, helmetConfig, sanitizeBody } = require('./middleware/security');
 
-const authRoutes = require('./routes/auth.routes');
-const userRoutes = require('./routes/user.routes');
-const adminRoutes = require('./routes/admin.routes');
-
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -29,6 +25,10 @@ const PORT = process.env.PORT || 3000;
 // ============================================================
 initDatabase();
 initEmailService().catch(err => console.warn('Email init warning:', err.message));
+
+const authRoutes = require('./routes/auth.routes');
+const userRoutes = require('./routes/user.routes');
+const adminRoutes = require('./routes/admin.routes');
 
 // ============================================================
 // Middleware globalny
