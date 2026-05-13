@@ -10,6 +10,8 @@
       <%
         const date = new Date(classData.start_time);
         const dateStr = date.toLocaleDateString('pl-PL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        const endDate = new Date(date.getTime() + (classData.duration_min * 60000));
+        const endTimeStr = endDate.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
         const timeStr = date.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
         const isChildUser = user.age_category === 'child';
         const isDualClass = classData.class_type === 'adult_and_child';
@@ -30,7 +32,7 @@
           </div>
           <div class="class-info-meta-item">
             <span class="meta-icon">⏰</span>
-            <span><%= timeStr %> (ok. <%= classData.duration_min %> minut)</span>
+            <span><%= timeStr %> - <%= endTimeStr %></span>
           </div>
           <% if (classData.instructor) { %>
           <div class="class-info-meta-item">

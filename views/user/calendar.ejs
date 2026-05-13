@@ -49,6 +49,8 @@
             const date = new Date(cls.start_time);
             const monthKey = date.toLocaleDateString('pl-PL', { year: 'numeric', month: 'long' });
             const dateStr = date.toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' });
+            const endDate = new Date(date.getTime() + (cls.duration_min * 60000));
+            const endTimeStr = endDate.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
             const timeStr = date.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
           %>
 
@@ -76,8 +78,7 @@
             <div class="cal-details">
               <h3 class="cal-name"><%= cls.name %></h3>
               <div class="cal-meta">
-                <span>⏰ <%= timeStr %></span>
-                <span>⏱ <%= cls.duration_min %> min</span>
+                <span>⏰ <%= timeStr %> - <%= endTimeStr %></span>
                 <% if (cls.instructor) { %><span>👤 <%= cls.instructor %></span><% } %>
                 <span class="cal-category-tag">
                   <%= cls.class_type === 'adult_and_child' ? '👥 D+Dz' : '🧑 Dorośli' %>

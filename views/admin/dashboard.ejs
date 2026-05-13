@@ -91,6 +91,8 @@
                 <%
                   const date = new Date(cls.start_time);
                   const dateStr = date.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short', year: 'numeric' });
+                  const endDate = new Date(date.getTime() + (cls.duration_min * 60000));
+                  const endTimeStr = endDate.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
                   const timeStr = date.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
                   const isPast = date < new Date();
                   const adultTaken = cls.adult_taken || 0;
@@ -104,7 +106,7 @@
                     <% if (cls.instructor) { %><br><small>👤 <%= cls.instructor %></small><% } %>
                     <% if (cls.class_type === 'adult_and_child' && cls.child_instructor) { %><br><small>👦 <%= cls.child_instructor %></small><% } %>
                   </td>
-                  <td><%= dateStr %><br><small><%= timeStr %></small></td>
+                  <td><%= dateStr %><br><small><%= timeStr %> - <%= endTimeStr %></small></td>
                   <td>
                     <span class="badge-cat badge-cat--<%= cls.class_type === 'adult_and_child' ? 'mixed' : 'adults' %>">
                       <%= cls.class_type === 'adult_and_child' ? 'D+Dz' : 'Dorośli' %>

@@ -123,7 +123,7 @@ router.get('/admin/classes/new', requireAdmin, (req, res) => {
 // POST /admin/classes — Utwórz
 // ============================================================
 router.post('/admin/classes', requireAdmin, (req, res) => {
-  const { name, description, startTime, durationMin, classType, maxSpots, maxChildSpots, instructor, childInstructor } = req.body;
+  const { name, description, startTime, endTime, classType, maxSpots, maxChildSpots, instructor, childInstructor } = req.body;
 
   if (!name?.trim() || !startTime || !maxSpots) {
     return res.render('admin/class-form', {
@@ -132,9 +132,11 @@ router.post('/admin/classes', requireAdmin, (req, res) => {
     });
   }
 
+  const durationMin = endTime && startTime ? Math.max(30, Math.round((new Date(endTime) - new Date(startTime)) / 60000)) : 90;
+
   ClassModel.create({
     name: name.trim(), description: description?.trim() || '',
-    startTime, durationMin: parseInt(durationMin) || 90,
+    startTime, durationMin,
     classType: classType || 'adult_only',
     maxSpots: parseInt(maxSpots),
     maxChildSpots: classType === 'adult_and_child' ? (parseInt(maxChildSpots) || 0) : 0,
@@ -159,17 +161,19 @@ router.get('/admin/classes/:id/edit', requireAdmin, (req, res) => {
 // POST /admin/classes/:id — Aktualizuj
 // ============================================================
 router.post('/admin/classes/:id', requireAdmin, (req, res) => {
-  const { name, description, startTime, durationMin, classType, maxSpots, maxChildSpots, instructor, childInstructor } = req.body;
+  const { name, description, startTime, endTime, classType, maxSpots, maxChildSpots, instructor, childInstructor } = req.body;
   const classData = ClassModel.getById(req.params.id);
   if (!classData) return res.redirect('/admin?error=Nie+znaleziono+zajęć');
 
   const ct = classType || classData.class_type;
 
+  const newDurationMin = endTime && startTime ? Math.max(30, Math.round((new Date(endTime) - new Date(startTime)) / 60000)) : classData.duration_min;
+
   ClassModel.update(req.params.id, {
     name: name?.trim() || classData.name,
     description: description?.trim() || '',
     startTime: startTime || classData.start_time,
-    durationMin: parseInt(durationMin) || classData.duration_min,
+    durationMin: newDurationMin,
     classType: ct,
     maxSpots: parseInt(maxSpots) || classData.max_spots,
     maxChildSpots: ct === 'adult_and_child' ? (parseInt(maxChildSpots) || 0) : 0,

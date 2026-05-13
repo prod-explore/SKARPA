@@ -60,6 +60,8 @@
               <%
                 const date = new Date(b.start_time);
                 const dateStr = date.toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' });
+                const endDate = new Date(date.getTime() + (b.duration_min * 60000));
+                const endTimeStr = endDate.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
                 const timeStr = date.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
                 const isPast = date < new Date();
                 const hoursLeft = (date - new Date()) / (1000 * 60 * 60);
@@ -74,8 +76,7 @@
                 <div class="booking-card-body">
                   <h3 class="booking-class-name"><%= b.name %></h3>
                   <div class="booking-meta">
-                    <span>⏰ <%= timeStr %></span>
-                    <span>⏱ <%= b.duration_min %> min</span>
+                    <span>⏰ <%= timeStr %> - <%= endTimeStr %></span>
                     <% if (b.instructor) { %><span>👤 <%= b.instructor %></span><% } %>
                   </div>
                   <div class="booking-participants">
@@ -124,6 +125,8 @@
               <%
                 const date = new Date(cls.start_time);
                 const dateStr = date.toLocaleDateString('pl-PL', { weekday: 'short', day: 'numeric', month: 'short' });
+                const endDate = new Date(date.getTime() + (cls.duration_min * 60000));
+                const endTimeStr = endDate.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
                 const timeStr = date.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
               %>
               <div class="class-card">
@@ -135,7 +138,7 @@
                 <h3 class="class-card-name"><%= cls.name %></h3>
                 <div class="class-card-meta">
                   <span>📅 <%= dateStr %></span>
-                  <span>⏰ <%= timeStr %></span>
+                  <span>⏰ <%= timeStr %> - <%= endTimeStr %></span>
                 </div>
                 <div class="class-card-spots">
                   <div class="spots-row">

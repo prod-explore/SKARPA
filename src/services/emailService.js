@@ -66,6 +66,8 @@ function bookingConfirmationHTML(classData, participants) {
   const date = new Date(classData.start_time);
   const dateStr = date.toLocaleDateString('pl-PL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   const timeStr = date.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
+  const endDate = new Date(date.getTime() + (classData.duration_min * 60000));
+  const endTimeStr = endDate.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
   const participantsList = participants.map(p =>
     `<li style="padding:5px 0;color:#333;border-bottom:1px solid #f0f0ec;">${p.firstName} ${p.lastName}</li>`
   ).join('');
@@ -86,7 +88,7 @@ function bookingConfirmationHTML(classData, participants) {
           <div style="background:#f0f7f2;border-left:4px solid #2d5a3d;padding:20px 24px;border-radius:0 10px 10px 0;margin-bottom:28px;">
             <div style="font-weight:700;font-size:18px;color:#1a3a2a;margin-bottom:10px;">${classData.name}</div>
             <div style="color:#555;margin-bottom:4px;">&#x1F4C5; ${dateStr}</div>
-            <div style="color:#555;margin-bottom:4px;">&#x23F0; ${timeStr} (${classData.duration_min} min)</div>
+            <div style="color:#555;margin-bottom:4px;">&#x23F0; ${timeStr} - ${endTimeStr}</div>
             ${classData.instructor ? `<div style="color:#555;">&#x1F464; ${classData.instructor}</div>` : ''}
           </div>
           <h3 style="color:#1a3a2a;margin:0 0 12px;font-size:14px;text-transform:uppercase;letter-spacing:1px;">Zapisane osoby</h3>

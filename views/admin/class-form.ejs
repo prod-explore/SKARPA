@@ -63,10 +63,10 @@
                    required>
           </div>
           <div class="form-group">
-            <label class="form-label">Czas trwania (min)</label>
-            <input type="number" name="durationMin" class="form-input"
-                   value="<%= classData ? classData.duration_min : 90 %>"
-                   min="30" max="360" placeholder="90">
+            <label class="form-label">Data i godzina zakończenia *</label>
+            <input type="datetime-local" name="endTime" class="form-input"
+                   value="<%= classData ? new Date(new Date(classData.start_time).getTime() + classData.duration_min*60000 - new Date().getTimezoneOffset()*60000).toISOString().slice(0,16) : '' %>"
+                   required>
           </div>
         </div>
 
