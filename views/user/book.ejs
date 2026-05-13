@@ -112,6 +112,12 @@
                 </div>
               </div>
 
+              <div class="form-group" style="margin-top:1rem;">
+                <label for="selfChildAge" class="form-label">Twój wiek (lata) *</label>
+                <input type="number" id="selfChildAge" name="selfChildAge" class="form-input" required min="7" max="17" inputmode="numeric" placeholder="np. 12" autocomplete="off">
+                <p class="booking-form-hint" style="margin-top:6px;margin-bottom:0;">Obowiązkowe przy zapisie dziecka (7–17 lat).</p>
+              </div>
+
               <button type="submit" class="btn btn--primary btn--full btn--lg">
                 Potwierdź zapis →
               </button>
@@ -126,7 +132,7 @@
             <p class="booking-form-hint">
               Możesz zapisać siebie i inne osoby w jednym kroku.
               <% if (isDualClass) { %>
-                Przy dodawaniu osoby zaznacz, czy to dorosły czy dziecko.
+                Przy osobie z kategorii „dziecko” podaj także wiek w latach (7–17).
               <% } %>
             </p>
 
@@ -194,6 +200,22 @@ const extraContainer = document.getElementById('extraParticipants');
 const countEl = document.getElementById('participantCount');
 const spotsWarn = document.getElementById('spotsWarning');
 
+function syncBlockChildAge(block) {
+  if (!IS_DUAL_CLASS) return;
+  const sel = block.querySelector('select.extra-age-category');
+  const wrap = block.querySelector('.extra-child-age-wrap');
+  if (!sel || !wrap) return;
+  const inp = wrap.querySelector('.extra-child-age-input');
+  if (sel.value === 'child') {
+    wrap.style.display = '';
+    inp.required = true;
+  } else {
+    wrap.style.display = 'none';
+    inp.required = false;
+    inp.value = '';
+  }
+}
+
 function updateCount() {
   if (!countEl) return;
   const extras = extraContainer ? extraContainer.querySelectorAll('.participant-block--extra').length : 0;
@@ -211,14 +233,21 @@ if (addBtn) {
     block.id = `extra_${idx}`;
 
     let ageCategoryHtml = '';
+    let childAgeBlock = '';
     if (IS_DUAL_CLASS) {
       ageCategoryHtml = `
         <div class="form-group">
           <label class="form-label">Kategoria *</label>
-          <select name="extraAgeCategory" class="form-input form-select">
+          <select name="extraAgeCategory" class="form-input form-select extra-age-category">
             <option value="adult">🧑 Dorosły (18+)</option>
             <option value="child">👦 Dziecko (7–17)</option>
           </select>
+        </div>
+      `;
+      childAgeBlock = `
+        <div class="form-group extra-child-age-wrap" style="display:none;">
+          <label class="form-label">Wiek (lata) <span style="font-weight:500;color:var(--text-muted);">— przy dziecku</span></label>
+          <input type="number" name="extraChildAge" class="form-input extra-child-age-input" min="7" max="17" inputmode="numeric" placeholder="np. 10">
         </div>
       `;
     } else {
@@ -241,8 +270,16 @@ if (addBtn) {
         </div>
         ${ageCategoryHtml}
       </div>
+      ${childAgeBlock}
     `;
     extraContainer.appendChild(block);
+    if (IS_DUAL_CLASS) {
+      const sel = block.querySelector('select.extra-age-category');
+      if (sel) {
+        sel.addEventListener('change', () => syncBlockChildAge(block));
+        syncBlockChildAge(block);
+      }
+    }
     updateCount();
   });
 }

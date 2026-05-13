@@ -6,7 +6,7 @@
 
     <div class="page-header">
       <h1>Kalendarz zajęć</h1>
-      <p>Poniżej znajdziesz wszystkie nadchodzące zajęcia. Zapisy otwierają się <strong>7 dni przed</strong> każdymi zajęciami.</p>
+      <p>Poniżej znajdziesz wszystkie nadchodzące zajęcia. Zapisy są możliwe od razu — dopóki są wolne miejsca.</p>
     </div>
 
 
@@ -19,8 +19,7 @@
 
     <!-- Legenda -->
     <div class="calendar-legend">
-      <span class="legend-item"><span class="legend-dot legend-dot--open"></span> Zapisy otwarte</span>
-      <span class="legend-item"><span class="legend-dot legend-dot--locked"></span> Zapisy wkrótce</span>
+      <span class="legend-item"><span class="legend-dot legend-dot--open"></span> Wolne miejsca</span>
       <span class="legend-item"><span class="legend-dot legend-dot--full"></span> Brak miejsc</span>
     </div>
 
@@ -61,7 +60,6 @@
 
           <div class="calendar-row <%= cls.category %>"
                data-category="<%= cls.category %>"
-               data-open="<%= cls.bookingOpen %>"
                data-full="<%= cls.isFull %>">
 
             <div class="cal-date">
@@ -71,7 +69,7 @@
 
             <div class="cal-status-bar">
               <span class="cal-status-dot
-                <%= cls.bookingOpen && !cls.isFull ? 'status-open' : !cls.bookingOpen ? 'status-locked' : 'status-full' %>">
+                <%= !cls.isFull ? 'status-open' : 'status-full' %>">
               </span>
             </div>
 
@@ -108,15 +106,7 @@
             </div>
 
             <div class="cal-action">
-              <% if (!cls.bookingOpen) { %>
-                <div class="cal-locked-info">
-                  <span class="cal-lock-icon">🔒</span>
-                  <span class="cal-lock-text">
-                    Zapisy od<br>
-                    <%= cls.bookingOpenDate.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' }) %>
-                  </span>
-                </div>
-              <% } else if (cls.isFull) { %>
+              <% if (cls.isFull) { %>
                 <span class="badge badge--full">Brak miejsc</span>
               <% } else if (user) { %>
                 <a href="/book/<%= cls.id %>" class="btn btn--primary btn--sm">Zapisz się</a>

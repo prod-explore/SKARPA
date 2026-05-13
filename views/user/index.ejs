@@ -61,8 +61,6 @@
           const timeStr = date.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
           const adultLeft = cls.max_spots - (cls.adult_taken || 0);
           const childLeft = cls.class_type === 'adult_and_child' ? (cls.max_child_spots - (cls.child_taken || 0)) : 0;
-          const isOpen = isBookingOpen(cls.start_time);
-          const openDate = getBookingOpenDate(cls.start_time);
         %>
         <div class="class-card">
           <div class="class-card-header">
@@ -91,9 +89,7 @@
             <% } %>
           </div>
           <div class="class-card-action">
-            <% if (!isOpen) { %>
-              <span class="class-locked">🔒 Zapisy od <%= openDate.toLocaleDateString('pl-PL', {day:'numeric', month:'short'}) %></span>
-            <% } else if (adultLeft <= 0) { %>
+            <% if (adultLeft <= 0) { %>
               <span class="class-full">Brak miejsc</span>
             <% } else if (typeof user !== 'undefined' && user) { %>
               <a href="/book/<%= cls.id %>" class="btn btn--primary btn--sm">Zapisz się</a>
@@ -120,7 +116,7 @@
       <h2>Jak działają zapisy?</h2>
     </div>
     <ul class="instruction-list">
-      <li><strong>Proste zapisy:</strong> Załóż konto i zapisz siebie lub dodatkowe osoby (w tym dzieci) na dokładnie 7 dni przed startem zajęć. Obowiązuje zasada — kto pierwszy, ten lepszy!</li>
+      <li><strong>Proste zapisy:</strong> Załóż konto i zapisz siebie lub dodatkowe osoby (w tym dzieci) na wybrany termin, dopóki są wolne miejsca — obowiązuje zasada: kto pierwszy, ten lepszy.</li>
       <li><strong>Samodzielność dziecka:</strong> Żeby osoba niepełnoletnia mogła sama rejestrować się na zajęcia, musi najpierw dostarczyć pisemną zgodę rodzica na samodzielny udział.</li>
     </ul>
   </div>

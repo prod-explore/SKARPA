@@ -123,6 +123,7 @@ function initDatabase() {
     { table: 'classes', column: 'child_instructor', sql: "ALTER TABLE classes ADD COLUMN child_instructor TEXT" },
     // participants
     { table: 'participants', column: 'age_category', sql: "ALTER TABLE participants ADD COLUMN age_category TEXT DEFAULT 'adult'" },
+    { table: 'participants', column: 'child_age', sql: 'ALTER TABLE participants ADD COLUMN child_age INTEGER' },
   ];
 
   for (const m of migrations) {
@@ -322,16 +323,21 @@ const BookingModel = {
       const bookingId = booking.lastInsertRowid;
 
       const insertParticipant = getDb().prepare(
-        'INSERT INTO participants (booking_id, first_name, last_name, age_category, is_main) VALUES (?, ?, ?, ?, ?)'
+        'INSERT INTO participants (booking_id, first_name, last_name, age_category, is_main, child_age) VALUES (?, ?, ?, ?, ?, ?)'
       );
 
       for (let i = 0; i < participants.length; i++) {
+        const ca = participants[i].childAge;
+        const childAgeVal = (ca !== undefined && ca !== null && ca !== '')
+          ? parseInt(ca, 10)
+          : null;
         insertParticipant.run(
           bookingId,
           participants[i].firstName,
           participants[i].lastName,
           participants[i].ageCategory || 'adult',
-          participants[i].isMain ? 1 : 0
+          participants[i].isMain ? 1 : 0,
+          Number.isInteger(childAgeVal) ? childAgeVal : null
         );
       }
 

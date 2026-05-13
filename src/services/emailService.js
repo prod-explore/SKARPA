@@ -18,6 +18,19 @@ function getResend() {
 
 const FROM_ADDRESS = process.env.EMAIL_FROM || 'Skarpa Bytom <noreply@skarpabytom.pl>';
 
+function publicLogoUrl() {
+  const base = (process.env.APP_URL || '').trim().replace(/\/$/, '');
+  return base ? `${base}/images/fw-logo.png` : '';
+}
+
+function emailHeaderLogoHTML() {
+  const src = publicLogoUrl();
+  if (src) {
+    return `<img src="${src}" alt="Skarpa Bytom" width="100" height="100" style="display:block;margin:0 auto 14px;border-radius:12px;width:100px;height:auto;">`;
+  }
+  return `<div style="font-size:26px;font-weight:900;color:#fff;letter-spacing:-0.5px;line-height:1.2;">SKARPA BYTOM</div>`;
+}
+
 function magicLinkEmailHTML(magicLink, isNewUser) {
   return `<!DOCTYPE html>
 <html lang="pl">
@@ -27,7 +40,7 @@ function magicLinkEmailHTML(magicLink, isNewUser) {
     <tr><td align="center">
       <table width="580" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 32px rgba(0,0,0,0.08);">
         <tr><td style="background:linear-gradient(135deg,#1a3a2a,#2d5a3d);padding:40px 48px;text-align:center;">
-          <div style="font-size:30px;font-weight:900;color:#fff;letter-spacing:-1px;">&#x1F9D7; SKARPA BYTOM</div>
+          ${emailHeaderLogoHTML()}
           <div style="color:#9dbfa8;font-size:12px;margin-top:6px;letter-spacing:3px;text-transform:uppercase;">System Rejestracji</div>
         </td></tr>
         <tr><td style="padding:48px 48px 32px;">
@@ -68,9 +81,12 @@ function bookingConfirmationHTML(classData, participants) {
   const timeStr = date.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
   const endDate = new Date(date.getTime() + (classData.duration_min * 60000));
   const endTimeStr = endDate.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
-  const participantsList = participants.map(p =>
-    `<li style="padding:5px 0;color:#333;border-bottom:1px solid #f0f0ec;">${p.firstName} ${p.lastName}</li>`
-  ).join('');
+  const participantsList = participants.map(p => {
+    const ageNote = (p.ageCategory === 'child' && p.childAge != null)
+      ? ` <span style="color:#555;">(${p.childAge} lat)</span>`
+      : '';
+    return `<li style="padding:5px 0;color:#333;border-bottom:1px solid #f0f0ec;">${p.firstName} ${p.lastName}${ageNote}</li>`;
+  }).join('');
 
   return `<!DOCTYPE html>
 <html lang="pl">
@@ -80,7 +96,7 @@ function bookingConfirmationHTML(classData, participants) {
     <tr><td align="center">
       <table width="580" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;">
         <tr><td style="background:linear-gradient(135deg,#1a3a2a,#2d5a3d);padding:40px 48px;text-align:center;">
-          <div style="font-size:30px;font-weight:900;color:#fff;">&#x1F9D7; SKARPA BYTOM</div>
+          ${emailHeaderLogoHTML()}
         </td></tr>
         <tr><td style="padding:48px;">
           <div style="text-align:center;font-size:48px;margin-bottom:16px;">&#x2705;</div>
@@ -131,7 +147,11 @@ async function sendBookingConfirmation(email, classData, participants) {
     to: [email],
     subject: `Potwierdzenie zapisu: ${classData.name} — Skarpa Bytom`,
     html: bookingConfirmationHTML(classData, participants),
-    text: `Zapisano na: ${classData.name}\nData: ${classData.start_time}\nUczestnicy: ${participants.map(p=>`${p.firstName} ${p.lastName}`).join(', ')}\n\nKontakt: wspinanie.ue@gmail.com`
+    text: `Zapisano na: ${classData.name}\nData: ${classData.start_time}\nUczestnicy: ${participants.map(p => {
+      let s = `${p.firstName} ${p.lastName}`;
+      if (p.ageCategory === 'child' && p.childAge != null) s += ` (${p.childAge} lat)`;
+      return s;
+    }).join(', ')}\n\nKontakt: wspinanie.ue@gmail.com`
   });
   if (error) { console.error('Resend error:', error); throw new Error(error.message); }
   console.log(`✉️  Potwierdzenie -> ${email} (id: ${data?.id})`);

@@ -110,7 +110,7 @@ app.use((err, req, res, next) => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`
   ╔══════════════════════════════════════════╗
-  ║   🧗 SKARPA BYTOM — System Rejestracji  ║
+  ║   SKARPA BYTOM — System Rejestracji      ║
   ║   Projekt dofinansowany z UE             ║
   ╠══════════════════════════════════════════╣
   ║   Adres:  ${(process.env.APP_URL || `http://localhost:${PORT}`).padEnd(25)}║

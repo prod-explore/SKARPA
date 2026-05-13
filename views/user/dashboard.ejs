@@ -49,7 +49,9 @@
 
         <% if (bookings.length === 0) { %>
           <div class="empty-state">
-            <div class="empty-state-icon">🧗</div>
+            <div class="empty-state-icon empty-state-icon--logo">
+              <img src="/images/fw-logo.png" alt="" width="96" height="96" decoding="async">
+            </div>
             <h3>Nie masz jeszcze żadnych zapisów</h3>
             <p>Sprawdź dostępne terminy i zapisz się na pierwsze zajęcia.</p>
             <a href="/calendar" class="btn btn--primary">Zobacz kalendarz →</a>
@@ -85,7 +87,9 @@
                       <span class="participant-chip">
                         <%= p.first_name %> <%= p.last_name %>
                         <% if (p.is_main) { %> ★<% } %>
-                        <% if (p.age_category === 'child') { %> 👦<% } %>
+                        <% if (p.age_category === 'child') { %>
+                          <% if (p.child_age != null) { %><span class="participant-chip-age">(<%= p.child_age %> lat)</span><% } else { %> 👦<% } %>
+                        <% } %>
                       </span>
                     <% }); %>
                   </div>
@@ -155,9 +159,7 @@
                   <% } %>
                 </div>
                 <div class="class-card-action">
-                  <% if (!cls.bookingOpen) { %>
-                    <span class="class-locked">🔒 Zapisy od <%= cls.bookingOpenDate.toLocaleDateString('pl-PL', {day:'numeric', month:'short'}) %></span>
-                  <% } else if (cls.isFull) { %>
+                  <% if (cls.isFull) { %>
                     <span class="class-full">Brak miejsc</span>
                   <% } else { %>
                     <a href="/book/<%= cls.id %>" class="btn btn--primary btn--sm">Zapisz się</a>

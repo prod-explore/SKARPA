@@ -11,24 +11,25 @@ const { requireAuth, requireProfile } = require('../middleware/auth');
 const { sendBookingConfirmation } = require('../services/emailService');
 const { apiLimiter } = require('../middleware/security');
 
-/**
- * Sprawdza, czy zapis na dane zajęcia jest już otwarty
- * (dokładnie 7 dni przed startem)
- */
-function isBookingOpen(startTime) {
-  const classDate = new Date(startTime);
-  const now = new Date();
-  const diffMs = classDate - now;
-  const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
-  return diffMs > 0 && diffMs <= sevenDaysMs;
+/** Wiek dziecka przy zapisie (7–17 lat), wymagany dla każdego uczestnika z kategorią „dziecko”. */
+function parseChildAge(raw) {
+  if (raw === undefined || raw === null || String(raw).trim() === '') {
+    return { ok: false, error: 'Podaj wiek dziecka (w latach).' };
+  }
+  const n = parseInt(String(raw).trim(), 10);
+  if (!Number.isInteger(n) || n < 7 || n > 17) {
+    return { ok: false, error: 'Wiek dziecka musi być liczbą całkowitą od 7 do 17 lat.' };
+  }
+  return { ok: true, value: n };
 }
 
 /**
- * Oblicza kiedy otwierają się zapisy (7 dni przed zajęciami)
+ * Czy można się zapisać na zajęcia względem czasu (bez okna „X dni przed”).
+ * Nadchodzące terminy z kalendarza są zawsze dostępne do zapisu, dopóki nie zabraknie miejsc.
  */
-function getBookingOpenDate(startTime) {
+function isBookingOpen(startTime) {
   const classDate = new Date(startTime);
-  return new Date(classDate - 7 * 24 * 60 * 60 * 1000);
+  return classDate > new Date();
 }
 
 // ============================================================
@@ -39,9 +40,7 @@ router.get('/', (req, res) => {
   res.render('user/index', {
     title: 'Panel Uczestnika — Skarpa Bytom',
     upcomingClasses,
-    user: req.user,
-    isBookingOpen,
-    getBookingOpenDate
+    user: req.user
   });
 });
 
@@ -52,8 +51,6 @@ router.get('/calendar', (req, res) => {
   const classes = ClassModel.getUpcoming();
   const classesWithStatus = classes.map(c => ({
     ...c,
-    bookingOpen: isBookingOpen(c.start_time),
-    bookingOpenDate: getBookingOpenDate(c.start_time),
     adultSpotsLeft: c.max_spots - (c.adult_taken || 0),
     childSpotsLeft: (c.class_type === 'adult_and_child') ? (c.max_child_spots - (c.child_taken || 0)) : 0,
     isFull: (c.adult_taken || 0) >= c.max_spots
@@ -99,8 +96,6 @@ router.get('/dashboard', requireAuth, requireProfile, (req, res) => {
 
   const classesWithStatus = upcomingClasses.map(c => ({
     ...c,
-    bookingOpen: isBookingOpen(c.start_time),
-    bookingOpenDate: getBookingOpenDate(c.start_time),
     adultSpotsLeft: c.max_spots - (c.adult_taken || 0),
     childSpotsLeft: (c.class_type === 'adult_and_child') ? (c.max_child_spots - (c.child_taken || 0)) : 0,
     isFull: (c.adult_taken || 0) >= c.max_spots,
@@ -135,14 +130,7 @@ router.get('/book/:classId', requireAuth, requireProfile, (req, res) => {
   }
 
   if (!isBookingOpen(classData.start_time)) {
-    const openDate = getBookingOpenDate(classData.start_time);
-    return res.render('user/book', {
-      title: 'Zapis na zajęcia',
-      classData,
-      user: req.user,
-      error: `Zapisy otwierają się ${openDate.toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' })} o ${openDate.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}.`,
-      notOpen: true
-    });
+    return res.redirect('/calendar?error=Te+zajęcia+już+się+odbyły+lub+nie+można+na+nie+zapisać');
   }
 
   const adultSpotsLeft = classData.max_spots - (classData.adult_taken || 0);
@@ -210,7 +198,7 @@ router.post('/book/:classId', requireAuth, requireProfile, apiLimiter, async (re
 
   // Podwójna weryfikacja blokady czasowej (server-side)
   if (!isBookingOpen(classData.start_time)) {
-    return res.redirect(`/book/${classData.id}?error=Zapisy+jeszcze+nie+są+otwarte`);
+    return res.redirect('/calendar?error=Te+zajęcia+nie+są+już+dostępne+do+zapisu');
   }
 
   // Sprawdź czy już nie zapisany
@@ -219,37 +207,72 @@ router.post('/book/:classId', requireAuth, requireProfile, apiLimiter, async (re
     return res.redirect('/dashboard?info=Jesteś+już+zapisany');
   }
 
+  const renderBookError = (errorMsg) => {
+    const spots = BookingModel.getSpotCounts(classData.id);
+    const adultSpotsLeft = classData.max_spots - spots.adult_taken;
+    const childSpotsLeft = classData.class_type === 'adult_and_child'
+      ? (classData.max_child_spots - spots.child_taken) : 0;
+    return res.render('user/book', {
+      title: `Zapis: ${classData.name}`,
+      classData,
+      user: req.user,
+      error: errorMsg,
+      notOpen: false,
+      full: false,
+      adultSpotsLeft,
+      childSpotsLeft
+    });
+  };
+
   // Zbierz uczestników z podziałem na pule
   const participants = [];
 
   if (req.user.age_category === 'child') {
-    // Samodzielne zweryfikowane dziecko — zapisuje tylko siebie w puli child
+    const ageCheck = parseChildAge(req.body.selfChildAge);
+    if (!ageCheck.ok) {
+      return renderBookError(ageCheck.error);
+    }
     participants.push({
       firstName: req.user.first_name,
       lastName: req.user.last_name,
       ageCategory: 'child',
-      isMain: true
+      isMain: true,
+      childAge: ageCheck.value
     });
   } else {
-    // Dorosły użytkownik zawsze zapisuje siebie jako opiekuna/uczestnika
     participants.push({
       firstName: req.user.first_name,
       lastName: req.user.last_name,
       ageCategory: 'adult',
-      isMain: true
+      isMain: true,
+      childAge: null
     });
 
-    // Dodatkowe osoby
     const extraFirstNames = [].concat(req.body.extraFirstName || []);
     const extraLastNames = [].concat(req.body.extraLastName || []);
     const extraAgeCategories = [].concat(req.body.extraAgeCategory || []);
+    const extraChildAges = [].concat(req.body.extraChildAge || []);
 
     for (let i = 0; i < extraFirstNames.length; i++) {
       const fn = extraFirstNames[i]?.trim();
       const ln = extraLastNames[i]?.trim();
       const ac = extraAgeCategories[i] || 'adult';
       if (fn && ln) {
-        participants.push({ firstName: fn, lastName: ln, ageCategory: ac, isMain: false });
+        let childAge = null;
+        if (ac === 'child') {
+          const ageCheck = parseChildAge(extraChildAges[i]);
+          if (!ageCheck.ok) {
+            return renderBookError(ageCheck.error);
+          }
+          childAge = ageCheck.value;
+        }
+        participants.push({
+          firstName: fn,
+          lastName: ln,
+          ageCategory: ac,
+          isMain: false,
+          childAge
+        });
       }
     }
   }
