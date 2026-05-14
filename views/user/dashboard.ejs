@@ -112,61 +112,93 @@
         <% } %>
       </section>
 
-      <!-- Dostępne zajęcia -->
+      <!-- Dostępne terminy — widok tygodniowy -->
       <section class="dashboard-section">
-        <h2 class="dashboard-section-title">Dostępne terminy</h2>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;padding-bottom:.75rem;border-bottom:2px solid var(--border);">
+          <h2 class="dashboard-section-title" style="margin:0;border:none;padding:0;">Dostępne terminy</h2>
+          <div class="week-nav" style="gap:.5rem;flex-wrap:nowrap;">
+            <a href="/dashboard?week=<%= weekOffset - 1 %>" class="btn btn--outline btn--xs">←</a>
+            <span style="font-size:.85rem;font-weight:600;white-space:nowrap;color:var(--text-muted);">
+              <%= weekStart.toLocaleDateString('pl-PL',{day:'numeric',month:'short'}) %> – <%= weekEnd.toLocaleDateString('pl-PL',{day:'numeric',month:'short',year:'numeric'}) %>
+            </span>
+            <a href="/dashboard?week=<%= weekOffset + 1 %>" class="btn btn--outline btn--xs">→</a>
+          </div>
+        </div>
 
-        <% const availableClasses = classes.filter(c => !c.userBooked); %>
-        <% if (availableClasses.length === 0) { %>
+        <% if (weekClasses.length === 0) { %>
           <div class="empty-state">
             <div class="empty-state-icon">📅</div>
-            <h3>Brak dostępnych terminów</h3>
-            <p>Zapisałeś się na wszystkie dostępne zajęcia lub nie ma nowych terminów.</p>
+            <h3>Brak dostępnych zajęć w tym tygodniu</h3>
+            <p>Sprawdź inny tydzień lub wróć wkrótce — nowe terminy są dodawane na bieżąco.</p>
           </div>
         <% } else { %>
-          <div class="classes-grid">
-            <% availableClasses.forEach(cls => { %>
-              <%
-                const date = new Date(cls.start_time);
-                const dateStr = date.toLocaleDateString('pl-PL', { weekday: 'short', day: 'numeric', month: 'short' });
-                const endDate = new Date(date.getTime() + (cls.duration_min * 60000));
-                const endTimeStr = endDate.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
-                const timeStr = date.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
+          <div class="week-grid-wrapper">
+            <div class="week-grid">
+              <div class="wg-time-col wg-header"></div>
+              <% for (let d = 0; d < 7; d++) {
+                const day = new Date(weekStart);
+                day.setDate(weekStart.getDate() + d);
+                const isToday = day.toDateString() === new Date().toDateString();
               %>
-              <div class="class-card">
-                <div class="class-card-header">
-                  <span class="class-category-badge">
-                    <%= cls.class_type === 'adult_and_child' ? '👥 Dorośli + Dzieci' : '🧑 Dorośli' %>
-                  </span>
-                </div>
-                <h3 class="class-card-name"><%= cls.name %></h3>
-                <div class="class-card-meta">
-                  <span>📅 <%= dateStr %></span>
-                  <span>⏰ <%= timeStr %> - <%= endTimeStr %></span>
-                </div>
-                <div class="class-card-spots">
-                  <div class="spots-row">
-                    <span class="spots-label <%= cls.adultSpotsLeft <= 3 ? 'spots-label--low' : '' %>">
-                      🧑 Dorośli: <%= cls.adultSpotsLeft %> wolnych
-                    </span>
-                  </div>
-                  <% if (cls.class_type === 'adult_and_child') { %>
-                  <div class="spots-row">
-                    <span class="spots-label <%= cls.childSpotsLeft <= 3 ? 'spots-label--low' : '' %>">
-                      👦 Dzieci: <%= cls.childSpotsLeft %> wolnych
-                    </span>
-                  </div>
-                  <% } %>
-                </div>
-                <div class="class-card-action">
-                  <% if (cls.isFull) { %>
-                    <span class="class-full">Brak miejsc</span>
-                  <% } else { %>
-                    <a href="/book/<%= cls.id %>" class="btn btn--primary btn--sm">Zapisz się</a>
-                  <% } %>
-                </div>
+              <div class="wg-day-header <%= isToday ? 'wg-day-header--today' : '' %>">
+                <span class="wg-day-name"><%= day.toLocaleDateString('pl-PL',{weekday:'short'}) %></span>
+                <span class="wg-day-num <%= isToday ? 'wg-day-num--today' : '' %>"><%= day.getDate() %></span>
               </div>
-            <% }); %>
+              <% } %>
+
+              <% const _totalSlots = (END_HOUR - START_HOUR) * 60 / SLOT_MIN; %>
+              <% for (let s = 0; s <= _totalSlots; s++) {
+                const _tm = START_HOUR * 60 + s * SLOT_MIN;
+                const _hh = String(Math.floor(_tm/60)).padStart(2,'0');
+                const _mm = String(_tm%60).padStart(2,'0');
+                const _ih = _tm % 60 === 0;
+              %>
+              <div class="wg-time-label <%= _ih?'':'wg-time-label--half' %>"><%= _ih?_hh+':'+_mm:'' %></div>
+              <% for (let d = 0; d < 7; d++) { %>
+              <div class="wg-cell <%= _ih?'wg-cell--hour':'' %>"></div>
+              <% } %>
+              <% } %>
+            </div>
+
+            <div class="wg-events-layer" style="height:calc(30px * <%= (END_HOUR - START_HOUR) * 60 / SLOT_MIN + 1 %>)">
+              <% weekClasses.forEach(cls => {
+                const st = new Date(cls.start_time);
+                const dayInWeek = Math.round((new Date(weekStart.toDateString()) - new Date(st.toDateString())) / 86400000) * -1;
+                if (dayInWeek < 0 || dayInWeek > 6) return;
+                const offsetFromStart = st.getHours() * 60 + st.getMinutes() - START_HOUR * 60;
+                if (offsetFromStart < 0) return;
+                const topPct = (offsetFromStart / ((END_HOUR - START_HOUR) * 60)) * 100;
+                const heightPct = (cls.duration_min / ((END_HOUR - START_HOUR) * 60)) * 100;
+                const adultLeft = cls.max_spots - (cls.adult_taken || 0);
+                const childLeft = cls.class_type === 'adult_and_child' ? (cls.max_child_spots - (cls.child_taken || 0)) : 0;
+                const isFull = adultLeft <= 0;
+                const et = new Date(st.getTime() + cls.duration_min * 60000);
+                const timeStr = st.toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});
+                const endStr = et.toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});
+                const color = cls.color || '#4d5a3a';
+                const leftPct = (dayInWeek / 7) * 100;
+                const widthPct = (1 / 7) * 100;
+              %>
+              <div class="wg-event <%= isFull?'wg-event--full':'' %>"
+                style="top:<%= topPct.toFixed(3) %>%;height:<%= heightPct.toFixed(3) %>%;left:calc(<%= leftPct.toFixed(3) %>% + 4px);width:calc(<%= widthPct.toFixed(3) %>% - 8px);background:<%= color %>;"
+                data-id="<%= cls.id %>"
+                data-name="<%= cls.name %>"
+                data-time="<%= timeStr %> – <%= endStr %>"
+                data-instructor="<%= cls.instructor || '' %>"
+                data-child-instructor="<%= cls.child_instructor || '' %>"
+                data-description="<%= (cls.description || '').replace(/\"/g, '&quot;') %>"
+                data-adult-left="<%= adultLeft %>"
+                data-adult-max="<%= cls.max_spots %>"
+                data-child-left="<%= childLeft %>"
+                data-child-max="<%= cls.max_child_spots %>"
+                data-type="<%= cls.class_type %>"
+                data-cancelled="<%= cls.is_cancelled ? '1' : '0' %>"
+                role="button" tabindex="0" aria-label="<%= cls.name %>">
+                <span class="wg-event-name"><%= cls.name %></span>
+                <span class="wg-event-time"><%= timeStr %> – <%= endStr %></span>
+              </div>
+              <% }); %>
+            </div>
           </div>
         <% } %>
       </section>
@@ -175,7 +207,80 @@
   </div>
 </div>
 
+<!-- MODAL -->
+<div id="classModal" class="cal-modal-overlay" aria-modal="true" role="dialog" style="display:none;">
+  <div class="cal-modal">
+    <button class="cal-modal-close" id="modalClose" aria-label="Zamknij">✕</button>
+    <div class="cal-modal-accent" id="modalAccent"></div>
+    <div class="cal-modal-body">
+      <h2 class="cal-modal-title" id="modalTitle"></h2>
+      <p class="cal-modal-time" id="modalTime"></p>
+      <div class="cal-modal-meta" id="modalMeta"></div>
+      <p class="cal-modal-desc" id="modalDesc"></p>
+      <div class="cal-modal-spots" id="modalSpots"></div>
+      <div class="cal-modal-actions" id="modalActions"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const modal = document.getElementById('classModal');
+  const modalClose = document.getElementById('modalClose');
+
+  function openModal(el) {
+    const d = el.dataset;
+    const adultLeft = parseInt(d.adultLeft);
+    const childLeft = parseInt(d.childLeft);
+    const isFull = adultLeft <= 0;
+    const isMixed = d.type === 'adult_and_child';
+    const isCancelled = d.cancelled === '1';
+
+    document.getElementById('modalAccent').style.background = el.style.background;
+    document.getElementById('modalTitle').textContent = d.name;
+    document.getElementById('modalTime').textContent = d.time;
+
+    let meta = '';
+    if (d.instructor) meta += `<span>👤 ${d.instructor}</span>`;
+    if (d.childInstructor) meta += `<span>🧒 Animacje: ${d.childInstructor}</span>`;
+    meta += `<span>${isMixed ? '👥 Dorośli + Dzieci' : '🧑 Tylko dorośli'}</span>`;
+    document.getElementById('modalMeta').innerHTML = meta;
+
+    const descEl = document.getElementById('modalDesc');
+    descEl.textContent = d.description || '';
+    descEl.style.display = d.description ? '' : 'none';
+
+    let spots = `<div class="modal-spots-row">`;
+    spots += `<span class="modal-spot-label ${adultLeft <= 3 ? 'low' : ''}">🧑 Dorośli: ${adultLeft} wolnych</span>`;
+    if (isMixed) spots += `<span class="modal-spot-label ${childLeft <= 3 ? 'low' : ''}">👦 Dzieci: ${childLeft} wolnych</span>`;
+    spots += `</div>`;
+    document.getElementById('modalSpots').innerHTML = spots;
+
+    let actions = '';
+    if (isCancelled) actions = `<span class="badge badge--full">Zajęcia odwołane</span>`;
+    else if (isFull) actions = `<span class="badge badge--full">Brak miejsc</span>`;
+    else actions = `<a href="/book/${d.id}" class="btn btn--primary btn--lg">Zapisz się →</a>`;
+    document.getElementById('modalActions').innerHTML = actions;
+
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    modalClose.focus();
+  }
+
+  function closeModal() { modal.style.display = 'none'; document.body.style.overflow = ''; }
+
+  document.querySelectorAll('.wg-event').forEach(el => {
+    el.addEventListener('click', () => openModal(el));
+    el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') openModal(el); });
+  });
+  modalClose.addEventListener('click', closeModal);
+  modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+})();
+</script>
+
 <%- include('../partials/footer') %>
 <script src="/js/main.js"></script>
 </body>
 </html>
+

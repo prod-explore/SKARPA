@@ -8,7 +8,7 @@ const router = express.Router();
 
 const { ClassModel, BookingModel, UserModel } = require('../models/database');
 const { requireAuth, requireProfile } = require('../middleware/auth');
-const { sendBookingConfirmation } = require('../services/emailService');
+const { sendMagicLink } = require('../services/emailService');
 const { apiLimiter } = require('../middleware/security');
 
 /** Wiek dziecka przy zapisie (7–17 lat), wymagany dla każdego uczestnika z kategorią „dziecko”. */
@@ -32,41 +32,54 @@ function isBookingOpen(startTime) {
   return classDate > new Date();
 }
 
-// ============================================================
-// GET / — Landing page (publiczny)
-// ============================================================
-router.get('/', (req, res) => {
-  // Oblicz tydzien biezacy dla strony glownej
+/** Oblicza dynamiczny zakres godzin siatki ±1h od skrajnych zajęć w tygodniu. */
+function computeGridHours(weekClasses) {
+  if (!weekClasses || !weekClasses.length) return { START_HOUR: 8, END_HOUR: 21, SLOT_MIN: 30 };
+  let minH = 23, maxH = 0;
+  weekClasses.forEach(c => {
+    const st = new Date(c.start_time);
+    const etMin = st.getHours() * 60 + st.getMinutes() + (c.duration_min || 60);
+    const etH = Math.ceil(etMin / 60);
+    if (st.getHours() < minH) minH = st.getHours();
+    if (etH > maxH) maxH = etH;
+  });
+  return {
+    START_HOUR: Math.max(6, minH - 1),
+    END_HOUR:   Math.min(23, maxH + 1),
+    SLOT_MIN:   30
+  };
+}
+
+/** Oblicza weekStart i weekEnd dla danego weekOffset (pon=0). */
+function getWeekBounds(weekOffset) {
   const today = new Date();
-  const dow = (today.getDay() + 6) % 7; // Mon=0
+  const dow = (today.getDay() + 6) % 7;
   const weekStart = new Date(today);
-  weekStart.setDate(today.getDate() - dow);
+  weekStart.setDate(today.getDate() - dow + (weekOffset || 0) * 7);
   weekStart.setHours(0, 0, 0, 0);
   const weekEnd = new Date(weekStart);
   weekEnd.setDate(weekStart.getDate() + 6);
   weekEnd.setHours(23, 59, 59, 999);
+  return { weekStart, weekEnd };
+}
+
+// ============================================================
+// GET / — Landing page (publiczny)
+// ============================================================
+router.get('/', (req, res) => {
+  const { weekStart, weekEnd } = getWeekBounds(0);
 
   const allClasses = ClassModel.getUpcoming();
   const weekClasses = allClasses
-    .filter(c => {
-      const st = new Date(c.start_time);
-      return st >= weekStart && st <= weekEnd;
-    })
-    .map(c => ({
-      ...c,
-      adult_taken: c.adult_taken || 0,
-      child_taken: c.child_taken || 0
-    }));
+    .filter(c => { const st = new Date(c.start_time); return st >= weekStart && st <= weekEnd; })
+    .map(c => ({ ...c, adult_taken: c.adult_taken || 0, child_taken: c.child_taken || 0 }));
+
+  const { START_HOUR, END_HOUR, SLOT_MIN } = computeGridHours(weekClasses);
 
   res.render('user/index', {
     title: 'Panel Uczestnika — Skarpa Bytom',
-    weekClasses,
-    weekStart,
-    weekEnd,
-    weekOffset: 0,
-    END_HOUR: 22,
-    START_HOUR: 7,
-    SLOT_MIN: 30,
+    weekClasses, weekStart, weekEnd, weekOffset: 0,
+    START_HOUR, END_HOUR, SLOT_MIN,
     user: req.user
   });
 });
@@ -76,38 +89,20 @@ router.get('/', (req, res) => {
 // ============================================================
 router.get('/calendar', (req, res) => {
   const weekOffset = parseInt(req.query.week || '0', 10);
+  const { weekStart, weekEnd } = getWeekBounds(weekOffset);
 
-  const today = new Date();
-  const dow = (today.getDay() + 6) % 7; // Mon=0
-  const weekStart = new Date(today);
-  weekStart.setDate(today.getDate() - dow + weekOffset * 7);
-  weekStart.setHours(0, 0, 0, 0);
-  const weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekStart.getDate() + 6);
-  weekEnd.setHours(23, 59, 59, 999);
-
-  // Pobierz zajecia z calej bazy (nie tylko upcoming) - przeszle tez mozna podejrzec
   const allClasses = ClassModel.getUpcoming();
   const weekClasses = allClasses
-    .filter(c => {
-      const st = new Date(c.start_time);
-      return st >= weekStart && st <= weekEnd;
-    })
-    .map(c => ({
-      ...c,
-      adult_taken: c.adult_taken || 0,
-      child_taken: c.child_taken || 0
-    }));
+    .filter(c => { const st = new Date(c.start_time); return st >= weekStart && st <= weekEnd; })
+    .map(c => ({ ...c, adult_taken: c.adult_taken || 0, child_taken: c.child_taken || 0 }));
+
+  const { START_HOUR, END_HOUR, SLOT_MIN } = computeGridHours(weekClasses);
 
   res.render('user/calendar', {
     title: 'Kalendarz zajęć',
     classes: weekClasses,
-    weekStart,
-    weekEnd,
-    weekOffset,
-    END_HOUR: 22,
-    START_HOUR: 7,
-    SLOT_MIN: 30,
+    weekStart, weekEnd, weekOffset,
+    START_HOUR, END_HOUR, SLOT_MIN,
     user: req.user
   });
 });
@@ -134,28 +129,42 @@ router.post('/consent/request', requireAuth, (req, res) => {
 // GET /dashboard — Panel użytkownika
 // ============================================================
 router.get('/dashboard', requireAuth, requireProfile, (req, res) => {
-  const upcomingClasses = ClassModel.getUpcoming();
-  const userBookings = BookingModel.getUserBookings(req.user.id);
+  const weekOffset = parseInt(req.query.week || '0', 10);
+  const { weekStart, weekEnd } = getWeekBounds(weekOffset);
 
-  // Pobierz uczestników dla każdej rezerwacji
+  const allUpcoming = ClassModel.getUpcoming();
+  const userBookings = BookingModel.getUserBookings(req.user.id);
   const bookingsWithParticipants = userBookings.map(b => ({
     ...b,
     participants: BookingModel.getParticipantsByBooking(b.id)
   }));
 
-  const classesWithStatus = upcomingClasses.map(c => ({
+  // Wszystkie nadchodzące + status dla dashboardu
+  const classesWithStatus = allUpcoming.map(c => ({
     ...c,
     adultSpotsLeft: c.max_spots - (c.adult_taken || 0),
-    childSpotsLeft: (c.class_type === 'adult_and_child') ? (c.max_child_spots - (c.child_taken || 0)) : 0,
+    childSpotsLeft: c.class_type === 'adult_and_child' ? (c.max_child_spots - (c.child_taken || 0)) : 0,
     isFull: (c.adult_taken || 0) >= c.max_spots,
     userBooked: userBookings.some(b => b.class_id === c.id)
   }));
+
+  // Zajęcia tygodniowe (dostępne) dla kalendarza
+  const weekClasses = allUpcoming
+    .filter(c => {
+      const st = new Date(c.start_time);
+      return st >= weekStart && st <= weekEnd && !userBookings.some(b => b.class_id === c.id);
+    })
+    .map(c => ({ ...c, adult_taken: c.adult_taken || 0, child_taken: c.child_taken || 0 }));
+
+  const { START_HOUR, END_HOUR, SLOT_MIN } = computeGridHours(weekClasses);
 
   res.render('user/dashboard', {
     title: 'Mój panel',
     user: req.user,
     classes: classesWithStatus,
-    bookings: bookingsWithParticipants
+    bookings: bookingsWithParticipants,
+    weekClasses, weekStart, weekEnd, weekOffset,
+    START_HOUR, END_HOUR, SLOT_MIN
   });
 });
 
@@ -420,13 +429,6 @@ router.post('/book/:classId', requireAuth, requireProfile, apiLimiter, async (re
   try {
     // Utwórz rezerwację z uczestnikami
     BookingModel.createWithParticipants(req.user.id, classData.id, participants);
-
-    // Wyślij e-mail potwierdzenia
-    try {
-      await sendBookingConfirmation(req.user.email, classData, participants);
-    } catch (emailErr) {
-      console.warn('Nie udało się wysłać potwierdzenia e-mail:', emailErr.message);
-    }
 
     return res.redirect('/dashboard?success=Zapisano+pomyślnie!');
   } catch (err) {

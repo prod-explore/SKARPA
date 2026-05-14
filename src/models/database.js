@@ -147,6 +147,15 @@ function initDatabase() {
   }
 
   console.log('✅ Baza danych SQLite zainicjalizowana:', DB_PATH);
+
+  // Usuń zajęcia starsze niż miesiąc przy każdym starcie serwera
+  const cleaned = db.prepare(
+    "DELETE FROM classes WHERE datetime(start_time) < datetime('now', '-1 month')"
+  ).run();
+  if (cleaned.changes > 0) {
+    console.log(`  ↳ Czyszczenie: usunięto ${cleaned.changes} starych zajęć (> 1 miesiąc).`);
+  }
+
   return db;
 }
 
@@ -303,7 +312,17 @@ const ClassModel = {
     getDb().prepare('UPDATE classes SET is_cancelled = 1 WHERE id = ?').run(id),
 
   delete: (id) =>
-    getDb().prepare('DELETE FROM classes WHERE id = ?').run(id)
+    getDb().prepare('DELETE FROM classes WHERE id = ?').run(id),
+
+  deleteOld: () => {
+    const result = getDb().prepare(
+      "DELETE FROM classes WHERE datetime(start_time) < datetime('now', '-1 month')"
+    ).run();
+    if (result.changes > 0) {
+      console.log(`  ↳ Czyszczenie: usunięto ${result.changes} starych zajęć (> 1 miesiąc).`);
+    }
+    return result.changes;
+  }
 };
 
 const BookingModel = {
