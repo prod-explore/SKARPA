@@ -129,6 +129,8 @@ function initDatabase() {
     { table: 'participants', column: 'age_category', sql: "ALTER TABLE participants ADD COLUMN age_category TEXT DEFAULT 'adult'" },
     { table: 'participants', column: 'child_age', sql: 'ALTER TABLE participants ADD COLUMN child_age INTEGER' },
     { table: 'participants', column: 'age', sql: 'ALTER TABLE participants ADD COLUMN age INTEGER' },
+    // classes
+    { table: 'classes', column: 'color', sql: "ALTER TABLE classes ADD COLUMN color TEXT DEFAULT '#6366f1'" },
   ];
 
   for (const m of migrations) {
@@ -281,19 +283,21 @@ const ClassModel = {
 
   create: (data) =>
     getDb().prepare(`
-      INSERT INTO classes (name, description, start_time, duration_min, class_type, max_spots, max_child_spots, instructor, child_instructor, category)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO classes (name, description, start_time, duration_min, class_type, max_spots, max_child_spots, instructor, child_instructor, category, color)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(data.name, data.description, data.startTime, data.durationMin || 90,
            data.classType || 'adult_only', data.maxSpots, data.maxChildSpots || 0,
-           data.instructor, data.childInstructor || '', data.category || 'adults'),
+           data.instructor, data.childInstructor || '', data.category || 'adults',
+           data.color || '#6366f1'),
 
   update: (id, data) =>
     getDb().prepare(`
       UPDATE classes SET name=?, description=?, start_time=?, duration_min=?,
-        class_type=?, max_spots=?, max_child_spots=?, instructor=?, child_instructor=?, category=? WHERE id=?
+        class_type=?, max_spots=?, max_child_spots=?, instructor=?, child_instructor=?, category=?, color=? WHERE id=?
     `).run(data.name, data.description, data.startTime, data.durationMin,
            data.classType, data.maxSpots, data.maxChildSpots || 0,
-           data.instructor, data.childInstructor || '', data.category, id),
+           data.instructor, data.childInstructor || '', data.category,
+           data.color || '#6366f1', id),
 
   cancel: (id) =>
     getDb().prepare('UPDATE classes SET is_cancelled = 1 WHERE id = ?').run(id),

@@ -2,13 +2,12 @@
 <%- include('../partials/navbar', { user: user }) %>
 
 <div class="page-content">
-  <div class="container">
+  <div class="container container--wide">
 
     <div class="page-header">
       <h1>Kalendarz zajęć</h1>
-      <p>Poniżej znajdziesz wszystkie nadchodzące zajęcia. Zapisy są możliwe od razu — dopóki są wolne miejsca.</p>
+      <p>Kliknij na zajęcia, aby zobaczyć szczegóły i zapisać się.</p>
     </div>
-
 
     <!-- Awaryjny kontakt e-mail -->
     <div class="emergency-contact-bar">
@@ -17,112 +16,120 @@
       <a href="mailto:wspinanie.ue@gmail.com" class="emergency-link">wspinanie.ue@gmail.com</a>
     </div>
 
-    <!-- Legenda -->
-    <div class="calendar-legend">
-      <span class="legend-item"><span class="legend-dot legend-dot--open"></span> Wolne miejsca</span>
-      <span class="legend-item"><span class="legend-dot legend-dot--full"></span> Brak miejsc</span>
+    <!-- Nawigacja tygodniowa -->
+    <div class="week-nav">
+      <a href="/calendar?week=<%= weekOffset - 1 %>" class="btn btn--outline btn--sm">← Poprzedni tydzień</a>
+      <span class="week-nav-label">
+        <%= weekStart.toLocaleDateString('pl-PL', { day: 'numeric', month: 'long' }) %> –
+        <%= weekEnd.toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' }) %>
+      </span>
+      <a href="/calendar?week=<%= weekOffset + 1 %>" class="btn btn--outline btn--sm">Następny tydzień →</a>
     </div>
 
-    <!-- Filtry kategorii -->
-    <div class="category-filters">
-      <button class="filter-btn active" data-filter="all">Wszystkie</button>
-      <button class="filter-btn" data-filter="adults">🧑 Tylko dorośli</button>
-      <button class="filter-btn" data-filter="mixed">👥 Dorośli + Dzieci</button>
-    </div>
+    <!-- Siatka tygodniowa -->
+    <div class="week-grid-wrapper">
+      <div class="week-grid">
 
-    <% if (classes.length === 0) { %>
-      <div class="empty-state">
-        <div class="empty-state-icon">📅</div>
-        <h3>Brak nadchodzących zajęć</h3>
-        <p>Zaglądaj regularnie — nowe terminy są dodawane na bieżąco.</p>
-      </div>
-    <% } else { %>
-
-      <div class="calendar-list" id="calendarList">
-        <%
-          // Grupuj zajęcia po miesiącu
-          let currentMonth = null;
+        <!-- Nagłówek dni -->
+        <div class="wg-time-col wg-header"></div>
+        <% for (let d = 0; d < 7; d++) {
+          const day = new Date(weekStart);
+          day.setDate(weekStart.getDate() + d);
+          const isToday = day.toDateString() === new Date().toDateString();
         %>
-        <% classes.forEach(cls => { %>
-          <%
-            const date = new Date(cls.start_time);
-            const monthKey = date.toLocaleDateString('pl-PL', { year: 'numeric', month: 'long' });
-            const dateStr = date.toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' });
-            const endDate = new Date(date.getTime() + (cls.duration_min * 60000));
-            const endTimeStr = endDate.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
-            const timeStr = date.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
-          %>
+        <div class="wg-day-header <%= isToday ? 'wg-day-header--today' : '' %>">
+          <span class="wg-day-name"><%= day.toLocaleDateString('pl-PL', { weekday: 'short' }) %></span>
+          <span class="wg-day-num <%= isToday ? 'wg-day-num--today' : '' %>"><%= day.getDate() %></span>
+        </div>
+        <% } %>
 
-          <% if (monthKey !== currentMonth) { %>
-            <% currentMonth = monthKey; %>
-            <div class="calendar-month-header"><%= monthKey %></div>
-          <% } %>
+        <!-- Wiersze godzinowe -->
+        <%
+          const START_HOUR = 7;
+          const END_HOUR = 22;
+          const SLOT_MIN = 30;
+          const totalSlots = (END_HOUR - START_HOUR) * 60 / SLOT_MIN;
+        %>
+        <% for (let s = 0; s <= totalSlots; s++) {
+          const totalMin = START_HOUR * 60 + s * SLOT_MIN;
+          const hh = String(Math.floor(totalMin / 60)).padStart(2, '0');
+          const mm = String(totalMin % 60).padStart(2, '0');
+          const isHour = totalMin % 60 === 0;
+        %>
+        <div class="wg-time-label <%= isHour ? '' : 'wg-time-label--half' %>">
+          <%= isHour ? hh + ':' + mm : '' %>
+        </div>
+        <% for (let d = 0; d < 7; d++) { %>
+        <div class="wg-cell <%= isHour ? 'wg-cell--hour' : '' %>"></div>
+        <% } %>
+        <% } %>
 
-          <div class="calendar-row <%= cls.category %>"
-               data-category="<%= cls.category %>"
-               data-full="<%= cls.isFull %>">
+      </div><!-- .week-grid -->
 
-            <div class="cal-date">
-              <span class="cal-day"><%= date.getDate() %></span>
-              <span class="cal-weekday"><%= date.toLocaleDateString('pl-PL', { weekday: 'short' }) %></span>
-            </div>
+      <!-- Overlay zajęć -->
+      <div class="wg-events-layer" aria-label="Zajęcia" style="height:calc(30px * <%= (END_HOUR - START_HOUR) * 60 / SLOT_MIN + 1 %>)">
+        <%
+          classes.forEach(cls => {
+            const st = new Date(cls.start_time);
+            const dayOfWeek = (st.getDay() + 6) % 7; // Mon=0..Sun=6
+            const dayInWeek = Math.round((new Date(weekStart.toDateString()) - new Date(st.toDateString())) / 86400000) * -1;
+            if (dayInWeek < 0 || dayInWeek > 6) return;
 
-            <div class="cal-status-bar">
-              <span class="cal-status-dot
-                <%= !cls.isFull ? 'status-open' : 'status-full' %>">
-              </span>
-            </div>
+            const startMin = st.getHours() * 60 + st.getMinutes();
+            const offsetFromStart = startMin - START_HOUR * 60;
+            if (offsetFromStart < 0) return;
+            const topPct = (offsetFromStart / ((END_HOUR - START_HOUR) * 60)) * 100;
+            const heightPct = (cls.duration_min / ((END_HOUR - START_HOUR) * 60)) * 100;
 
-            <div class="cal-details">
-              <h3 class="cal-name"><%= cls.name %></h3>
-              <div class="cal-meta">
-                <span>⏰ <%= timeStr %> - <%= endTimeStr %></span>
-                <% if (cls.instructor) { %><span>👤 <%= cls.instructor %></span><% } %>
-                <span class="cal-category-tag">
-                  <%= cls.class_type === 'adult_and_child' ? '👥 D+Dz' : '🧑 Dorośli' %>
-                </span>
-              </div>
-            </div>
+            const adultLeft = cls.max_spots - (cls.adult_taken || 0);
+            const childLeft = cls.class_type === 'adult_and_child' ? (cls.max_child_spots - (cls.child_taken || 0)) : 0;
+            const isFull = adultLeft <= 0;
 
-            <div class="cal-spots">
-              <div class="spots-bar-wrap">
-                <div class="spots-bar">
-                  <div class="spots-bar-fill" style="width: <%= Math.round((cls.adult_taken || 0) / cls.max_spots * 100) %>%"></div>
-                </div>
-                <span class="spots-label <%= cls.adultSpotsLeft <= 3 ? 'spots-label--low' : '' %>">
-                  🧑 <%= cls.adultSpotsLeft %>/<%= cls.max_spots %>
-                </span>
-              </div>
-              <% if (cls.class_type === 'adult_and_child' && cls.max_child_spots > 0) { %>
-              <div class="spots-bar-wrap" style="margin-top:4px;">
-                <div class="spots-bar">
-                  <div class="spots-bar-fill" style="width: <%= Math.round((cls.child_taken || 0) / cls.max_child_spots * 100) %>%"></div>
-                </div>
-                <span class="spots-label <%= cls.childSpotsLeft <= 3 ? 'spots-label--low' : '' %>">
-                  👦 <%= cls.childSpotsLeft %>/<%= cls.max_child_spots %>
-                </span>
-              </div>
-              <% } %>
-            </div>
+            const et = new Date(st.getTime() + cls.duration_min * 60000);
+            const timeStr = st.toLocaleTimeString('pl-PL', {hour:'2-digit', minute:'2-digit'});
+            const endStr  = et.toLocaleTimeString('pl-PL', {hour:'2-digit', minute:'2-digit'});
 
-            <div class="cal-action">
-              <% if (cls.isFull) { %>
-                <span class="badge badge--full">Brak miejsc</span>
-              <% } else if (user) { %>
-                <a href="/book/<%= cls.id %>" class="btn btn--primary btn--sm">Zapisz się</a>
-              <% } else { %>
-                <a href="/login?next=/book/<%= cls.id %>" class="btn btn--primary btn--sm">Zaloguj się</a>
-              <% } %>
-            </div>
-
-          </div>
+            const color = cls.color || '#6366f1';
+            // left% per column: 7 equal columns (time-col is separate)
+            const leftPct = (dayInWeek / 7) * 100;
+            const widthPct = (1 / 7) * 100;
+        %>
+        <div
+          class="wg-event <%= isFull ? 'wg-event--full' : '' %>"
+          style="
+            top:<%= topPct.toFixed(3) %>%;
+            height:<%= heightPct.toFixed(3) %>%;
+            left:calc(<%= leftPct.toFixed(3) %>% + 4px);
+            width:calc(<%= widthPct.toFixed(3) %>% - 8px);
+            background:<%= color %>;
+          "
+          data-id="<%= cls.id %>"
+          data-name="<%= cls.name %>"
+          data-time="<%= timeStr %> – <%= endStr %>"
+          data-instructor="<%= cls.instructor || '' %>"
+          data-child-instructor="<%= cls.child_instructor || '' %>"
+          data-description="<%= (cls.description || '').replace(/\"/g, '&quot;') %>"
+          data-adult-left="<%= adultLeft %>"
+          data-adult-max="<%= cls.max_spots %>"
+          data-child-left="<%= childLeft %>"
+          data-child-max="<%= cls.max_child_spots %>"
+          data-type="<%= cls.class_type %>"
+          data-cancelled="<%= cls.is_cancelled ? '1' : '0' %>"
+          role="button"
+          tabindex="0"
+          aria-label="<%= cls.name %>"
+        >
+          <span class="wg-event-name"><%= cls.name %></span>
+          <span class="wg-event-time"><%= timeStr %> – <%= endStr %></span>
+          <% if (cls.instructor) { %><span class="wg-event-instr"><%= cls.instructor %></span><% } %>
+        </div>
         <% }); %>
-      </div>
+      </div><!-- .wg-events-layer -->
 
-    <% } %>
+    </div><!-- .week-grid-wrapper -->
 
     <% if (!user) { %>
-    <div class="calendar-cta-hint">
+    <div class="calendar-cta-hint" style="margin-top:2rem;">
       <p>🔑 <strong>Chcesz się zapisać?</strong> <a href="/login">Zaloguj się</a> — to zajmuje 30 sekund, potrzebujesz tylko e-maila.</p>
     </div>
     <% } %>
@@ -130,24 +137,367 @@
   </div>
 </div>
 
-<%- include('../partials/footer') %>
+<!-- MODAL SZCZEGÓŁÓW -->
+<div id="classModal" class="cal-modal-overlay" aria-modal="true" role="dialog" style="display:none;">
+  <div class="cal-modal">
+    <button class="cal-modal-close" id="modalClose" aria-label="Zamknij">✕</button>
+    <div class="cal-modal-accent" id="modalAccent"></div>
+    <div class="cal-modal-body">
+      <h2 class="cal-modal-title" id="modalTitle"></h2>
+      <p class="cal-modal-time" id="modalTime"></p>
+
+      <div class="cal-modal-meta" id="modalMeta"></div>
+      <p class="cal-modal-desc" id="modalDesc"></p>
+
+      <div class="cal-modal-spots" id="modalSpots"></div>
+
+      <div class="cal-modal-actions" id="modalActions"></div>
+    </div>
+  </div>
+</div>
 
 <script>
-document.querySelectorAll('.filter-btn').forEach(btn => {
-  btn.addEventListener('click', function() {
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    this.classList.add('active');
-    const filter = this.dataset.filter;
-    document.querySelectorAll('.calendar-row').forEach(row => {
-      if (filter === 'all' || row.dataset.category === filter) {
-        row.style.display = '';
-      } else {
-        row.style.display = 'none';
-      }
-    });
+  // ── Tygodniowy widok: rozmieszczenie wg godzin ──────────────────
+  // Pomiar wysokości siatki i rozmieszczenie kafelków odbywa się przez CSS %.
+  // (Siatka ma stałą wysokość time-rows × row-height)
+
+  // ── Modal ──────────────────────────────────────────────────────
+  const modal        = document.getElementById('classModal');
+  const modalClose   = document.getElementById('modalClose');
+  const modalAccent  = document.getElementById('modalAccent');
+  const modalTitle   = document.getElementById('modalTitle');
+  const modalTime    = document.getElementById('modalTime');
+  const modalMeta    = document.getElementById('modalMeta');
+  const modalDesc    = document.getElementById('modalDesc');
+  const modalSpots   = document.getElementById('modalSpots');
+  const modalActions = document.getElementById('modalActions');
+  const isLoggedIn   = <%= typeof user !== 'undefined' && user ? 'true' : 'false' %>;
+
+  function openModal(el) {
+    const d = el.dataset;
+    const isCancelled = d.cancelled === '1';
+    const adultLeft   = parseInt(d.adultLeft);
+    const childLeft   = parseInt(d.childLeft);
+    const isFull      = adultLeft <= 0;
+    const isMixed     = d.type === 'adult_and_child';
+
+    modalAccent.style.background = el.style.background;
+    modalTitle.textContent = d.name;
+    modalTime.textContent  = d.time;
+
+    let meta = '';
+    if (d.instructor)      meta += `<span>👤 ${d.instructor}</span>`;
+    if (d.childInstructor) meta += `<span>🧒 Animacje: ${d.childInstructor}</span>`;
+    meta += `<span>${isMixed ? '👥 Dorośli + Dzieci' : '🧑 Tylko dorośli'}</span>`;
+    modalMeta.innerHTML = meta;
+
+    modalDesc.textContent = d.description || '';
+    modalDesc.style.display = d.description ? '' : 'none';
+
+    let spots = `<div class="modal-spots-row">`;
+    spots += `<span class="modal-spot-label ${adultLeft <= 3 ? 'low' : ''}">🧑 Dorośli: ${adultLeft}/${d.adultMax} wolnych</span>`;
+    if (isMixed) {
+      spots += `<span class="modal-spot-label ${childLeft <= 3 ? 'low' : ''}">👦 Dzieci: ${childLeft}/${d.childMax} wolnych</span>`;
+    }
+    spots += `</div>`;
+    modalSpots.innerHTML = spots;
+
+    let actions = '';
+    if (isCancelled) {
+      actions = `<span class="badge badge--full">Zajęcia odwołane</span>`;
+    } else if (isFull) {
+      actions = `<span class="badge badge--full">Brak miejsc</span>`;
+    } else if (isLoggedIn) {
+      actions = `<a href="/book/${d.id}" class="btn btn--primary btn--lg">Zapisz się →</a>`;
+    } else {
+      actions = `<a href="/login?next=/book/${d.id}" class="btn btn--primary btn--lg">Zaloguj się, by się zapisać →</a>`;
+    }
+    modalActions.innerHTML = actions;
+
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    modalClose.focus();
+  }
+
+  function closeModal() {
+    modal.style.display = 'none';
+    document.body.style.overflow = '';
+  }
+
+  // Kliknięcie kafelka
+  document.querySelectorAll('.wg-event').forEach(el => {
+    el.addEventListener('click', () => openModal(el));
+    el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') openModal(el); });
   });
-});
+
+  modalClose.addEventListener('click', closeModal);
+  modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 </script>
+
+<style>
+/* ── Nawigacja tygodniowa ─────────────────────────────────── */
+.week-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+.week-nav-label {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--text-primary, #f1f5f9);
+}
+
+/* ── Wrapper: pozycjonowanie overlay ────────────────────────── */
+.week-grid-wrapper {
+  position: relative;
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.07);
+  background: var(--surface, #1e2130);
+}
+
+/* ── Siatka CSS Grid ─────────────────────────────────────────── */
+.week-grid {
+  display: grid;
+  /* 1 col time-label + 7 day cols */
+  grid-template-columns: 52px repeat(7, 1fr);
+  min-width: 700px;
+}
+
+.wg-header { background: transparent; }
+
+.wg-day-header {
+  text-align: center;
+  padding: 10px 4px;
+  border-left: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 2px solid rgba(255,255,255,0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.wg-day-header--today {
+  background: rgba(99,102,241,0.1);
+}
+.wg-day-name {
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text-muted, #94a3b8);
+}
+.wg-day-num {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary, #f1f5f9);
+}
+.wg-day-num--today {
+  background: #6366f1;
+  color: #fff;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+
+.wg-time-label {
+  font-size: .7rem;
+  color: var(--text-muted, #94a3b8);
+  padding: 0 6px;
+  text-align: right;
+  line-height: 1;
+  height: 30px;
+  display: flex;
+  align-items: flex-start;
+  padding-top: 2px;
+  user-select: none;
+}
+.wg-time-label--half {
+  opacity: 0;
+}
+
+.wg-cell {
+  height: 30px;
+  border-left: 1px solid rgba(255,255,255,0.04);
+  border-top: 1px solid rgba(255,255,255,0.04);
+}
+.wg-cell--hour {
+  border-top-color: rgba(255,255,255,0.09);
+}
+
+/* ── Overlay event tiles ─────────────────────────────────────── */
+.wg-events-layer {
+  position: absolute;
+  /* top = header row: ~52px */
+  top: 52px;
+  /* left = time-col: 52px */
+  left: 52px;
+  right: 0;
+  /* height = totalSlots × 30px */
+  height: calc(30px * <%= (END_HOUR - START_HOUR) * 60 / SLOT_MIN + 1 %>);
+  pointer-events: none;
+}
+
+.wg-event {
+  position: absolute;
+  border-radius: 7px;
+  padding: 5px 7px;
+  overflow: hidden;
+  cursor: pointer;
+  pointer-events: all;
+  transition: filter .15s, transform .15s;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.35);
+  border: 1px solid rgba(255,255,255,0.15);
+}
+.wg-event:hover {
+  filter: brightness(1.15);
+  transform: scale(1.02);
+  z-index: 10;
+}
+.wg-event--full {
+  opacity: .55;
+}
+.wg-event-name {
+  font-size: .75rem;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wg-event-time {
+  font-size: .67rem;
+  color: rgba(255,255,255,.8);
+}
+.wg-event-instr {
+  font-size: .65rem;
+  color: rgba(255,255,255,.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Modal ───────────────────────────────────────────────────── */
+.cal-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(4px);
+}
+.cal-modal {
+  background: var(--surface, #1e2130);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+  width: min(520px, 95vw);
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 24px 60px rgba(0,0,0,.6);
+  animation: modalIn .2s ease;
+}
+@keyframes modalIn {
+  from { opacity:0; transform:translateY(16px) scale(.97); }
+  to   { opacity:1; transform:none; }
+}
+.cal-modal-accent {
+  height: 6px;
+  width: 100%;
+}
+.cal-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: rgba(255,255,255,0.08);
+  border: none;
+  color: #fff;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s;
+  z-index: 2;
+}
+.cal-modal-close:hover { background: rgba(255,255,255,0.18); }
+.cal-modal-body {
+  padding: 1.5rem 1.75rem 1.75rem;
+}
+.cal-modal-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-primary, #f1f5f9);
+  margin-bottom: .3rem;
+  padding-right: 2rem;
+}
+.cal-modal-time {
+  font-size: .95rem;
+  color: var(--text-muted, #94a3b8);
+  margin-bottom: 1rem;
+}
+.cal-modal-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-bottom: 1rem;
+}
+.cal-modal-meta span {
+  background: rgba(255,255,255,0.07);
+  border-radius: 20px;
+  padding: 3px 12px;
+  font-size: .82rem;
+  color: var(--text-secondary, #cbd5e1);
+}
+.cal-modal-desc {
+  font-size: .9rem;
+  color: var(--text-secondary, #cbd5e1);
+  line-height: 1.6;
+  margin-bottom: 1.2rem;
+  border-left: 3px solid rgba(255,255,255,.1);
+  padding-left: .9rem;
+}
+.cal-modal-spots {
+  margin-bottom: 1.4rem;
+}
+.modal-spots-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+}
+.modal-spot-label {
+  font-size: .88rem;
+  color: var(--text-secondary, #cbd5e1);
+  background: rgba(255,255,255,0.05);
+  padding: 5px 14px;
+  border-radius: 8px;
+}
+.modal-spot-label.low {
+  color: #f97316;
+  background: rgba(249,115,22,.1);
+}
+.cal-modal-actions {
+  display: flex;
+  gap: .75rem;
+  flex-wrap: wrap;
+}
+</style>
+
+<%- include('../partials/footer') %>
 <script src="/js/main.js"></script>
 </body>
 </html>

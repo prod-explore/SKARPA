@@ -36,10 +36,37 @@ function isBookingOpen(startTime) {
 // GET / — Landing page (publiczny)
 // ============================================================
 router.get('/', (req, res) => {
-  const upcomingClasses = ClassModel.getUpcoming().slice(0, 6);
+  // Oblicz tydzien biezacy dla strony glownej
+  const today = new Date();
+  const dow = (today.getDay() + 6) % 7; // Mon=0
+  const weekStart = new Date(today);
+  weekStart.setDate(today.getDate() - dow);
+  weekStart.setHours(0, 0, 0, 0);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 6);
+  weekEnd.setHours(23, 59, 59, 999);
+
+  const allClasses = ClassModel.getUpcoming();
+  const weekClasses = allClasses
+    .filter(c => {
+      const st = new Date(c.start_time);
+      return st >= weekStart && st <= weekEnd;
+    })
+    .map(c => ({
+      ...c,
+      adult_taken: c.adult_taken || 0,
+      child_taken: c.child_taken || 0
+    }));
+
   res.render('user/index', {
     title: 'Panel Uczestnika — Skarpa Bytom',
-    upcomingClasses,
+    weekClasses,
+    weekStart,
+    weekEnd,
+    weekOffset: 0,
+    END_HOUR: 22,
+    START_HOUR: 7,
+    SLOT_MIN: 30,
     user: req.user
   });
 });
@@ -48,17 +75,39 @@ router.get('/', (req, res) => {
 // GET /calendar — Publiczny kalendarz zajęć
 // ============================================================
 router.get('/calendar', (req, res) => {
-  const classes = ClassModel.getUpcoming();
-  const classesWithStatus = classes.map(c => ({
-    ...c,
-    adultSpotsLeft: c.max_spots - (c.adult_taken || 0),
-    childSpotsLeft: (c.class_type === 'adult_and_child') ? (c.max_child_spots - (c.child_taken || 0)) : 0,
-    isFull: (c.adult_taken || 0) >= c.max_spots
-  }));
+  const weekOffset = parseInt(req.query.week || '0', 10);
+
+  const today = new Date();
+  const dow = (today.getDay() + 6) % 7; // Mon=0
+  const weekStart = new Date(today);
+  weekStart.setDate(today.getDate() - dow + weekOffset * 7);
+  weekStart.setHours(0, 0, 0, 0);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 6);
+  weekEnd.setHours(23, 59, 59, 999);
+
+  // Pobierz zajecia z calej bazy (nie tylko upcoming) - przeszle tez mozna podejrzec
+  const allClasses = ClassModel.getUpcoming();
+  const weekClasses = allClasses
+    .filter(c => {
+      const st = new Date(c.start_time);
+      return st >= weekStart && st <= weekEnd;
+    })
+    .map(c => ({
+      ...c,
+      adult_taken: c.adult_taken || 0,
+      child_taken: c.child_taken || 0
+    }));
 
   res.render('user/calendar', {
     title: 'Kalendarz zajęć',
-    classes: classesWithStatus,
+    classes: weekClasses,
+    weekStart,
+    weekEnd,
+    weekOffset,
+    END_HOUR: 22,
+    START_HOUR: 7,
+    SLOT_MIN: 30,
     user: req.user
   });
 });

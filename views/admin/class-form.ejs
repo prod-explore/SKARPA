@@ -103,6 +103,23 @@
           </div>
         </div>
 
+        <!-- Kolor kafelka -->
+        <div class="form-row" style="align-items:center;gap:1rem;margin-top:.5rem;">
+          <div class="form-group" style="flex:0 0 auto;">
+            <label class="form-label">Kolor kafelka</label>
+            <input type="color" name="color" class="form-input" style="height:44px;width:80px;padding:4px;cursor:pointer;"
+                   value="<%= classData ? (classData.color || '#6366f1') : '#6366f1' %>">
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label class="form-label">Podgląd</label>
+            <div id="colorPreview" style="
+              height:44px;border-radius:8px;padding:0 16px;display:flex;align-items:center;
+              font-weight:600;font-size:.9rem;color:#fff;
+              background:<%= classData ? (classData.color || '#6366f1') : '#6366f1' %>;
+            ">Podgląd zajęć</div>
+          </div>
+        </div>
+
         <div class="form-actions">
           <a href="/admin" class="btn btn--outline">Anuluj</a>
           <button type="submit" class="btn btn--primary btn--lg">
@@ -121,6 +138,15 @@
     document.getElementById('childFields').style.display =
       this.value === 'adult_and_child' ? '' : 'none';
   });
+
+  // Podgląd koloru na żywo
+  const colorInput = document.querySelector('input[name="color"]');
+  const colorPreview = document.getElementById('colorPreview');
+  if (colorInput && colorPreview) {
+    colorInput.addEventListener('input', function() {
+      colorPreview.style.background = this.value;
+    });
+  }
 </script>
 <script src="/js/main.js"></script>
 </body>
