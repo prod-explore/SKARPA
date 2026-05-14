@@ -146,25 +146,43 @@ router.get('/profile/complete', requireAuth, (req, res) => {
 // POST /profile/complete — Zapis danych profilu
 // ============================================================
 router.post('/profile/complete', requireAuth, (req, res) => {
-  const { firstName, lastName, ageCategory, next: nextUrl } = req.body;
+  const { firstName, lastName, birthDate, next: nextUrl } = req.body;
 
-  if (!firstName?.trim() || !lastName?.trim()) {
+  if (!firstName?.trim() || !lastName?.trim() || !birthDate) {
     return res.render('user/complete-profile', {
       title: 'Uzupełnij profil',
       next: nextUrl || '/dashboard',
-      error: 'Imię i nazwisko są wymagane.'
+      error: 'Imię, nazwisko i data urodzenia są wymagane.'
     });
   }
 
-  if (!ageCategory || !['adult', 'child'].includes(ageCategory)) {
+  const birthDateObj = new Date(birthDate);
+  if (isNaN(birthDateObj.getTime())) {
     return res.render('user/complete-profile', {
       title: 'Uzupełnij profil',
       next: nextUrl || '/dashboard',
-      error: 'Wybierz kategorię wiekową.'
+      error: 'Nieprawidłowa data urodzenia.'
     });
   }
 
-  UserModel.updateProfile(req.user.id, firstName.trim(), lastName.trim(), ageCategory);
+  const today = new Date();
+  let age = today.getFullYear() - birthDateObj.getFullYear();
+  const m = today.getMonth() - birthDateObj.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birthDateObj.getDate())) {
+    age--;
+  }
+
+  if (age < 13) {
+    return res.render('user/complete-profile', {
+      title: 'Uzupełnij profil',
+      next: nextUrl || '/dashboard',
+      error: 'Konto można utworzyć jedynie dla osób w wieku 13+.'
+    });
+  }
+
+  const ageCategory = age >= 18 ? 'adult' : 'child';
+
+  UserModel.updateProfile(req.user.id, firstName.trim(), lastName.trim(), ageCategory, birthDate);
 
   // Odśwież dane w cookie
   const updatedUser = UserModel.findById(req.user.id);

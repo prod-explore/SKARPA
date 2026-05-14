@@ -43,6 +43,7 @@ function initDatabase() {
       is_verified        INTEGER DEFAULT 0,
       consent_requested  INTEGER DEFAULT 0,
       is_admin           INTEGER DEFAULT 0,
+      birth_date         TEXT,
       created_at         DATETIME DEFAULT CURRENT_TIMESTAMP,
       last_login         DATETIME
     );
@@ -99,6 +100,8 @@ function initDatabase() {
       last_name    TEXT    NOT NULL,
       age_category TEXT    DEFAULT 'adult',
       is_main      INTEGER DEFAULT 0,
+      age          INTEGER,
+      child_age    INTEGER,
       FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE
     );
 
@@ -117,6 +120,7 @@ function initDatabase() {
     { table: 'users', column: 'age_category',      sql: "ALTER TABLE users ADD COLUMN age_category TEXT DEFAULT NULL" },
     { table: 'users', column: 'is_verified',       sql: "ALTER TABLE users ADD COLUMN is_verified INTEGER DEFAULT 0" },
     { table: 'users', column: 'consent_requested', sql: "ALTER TABLE users ADD COLUMN consent_requested INTEGER DEFAULT 0" },
+    { table: 'users', column: 'birth_date',        sql: "ALTER TABLE users ADD COLUMN birth_date TEXT" },
     // classes
     { table: 'classes', column: 'class_type',       sql: "ALTER TABLE classes ADD COLUMN class_type TEXT DEFAULT 'adult_only'" },
     { table: 'classes', column: 'max_child_spots',  sql: "ALTER TABLE classes ADD COLUMN max_child_spots INTEGER DEFAULT 0" },
@@ -124,6 +128,7 @@ function initDatabase() {
     // participants
     { table: 'participants', column: 'age_category', sql: "ALTER TABLE participants ADD COLUMN age_category TEXT DEFAULT 'adult'" },
     { table: 'participants', column: 'child_age', sql: 'ALTER TABLE participants ADD COLUMN child_age INTEGER' },
+    { table: 'participants', column: 'age', sql: 'ALTER TABLE participants ADD COLUMN age INTEGER' },
   ];
 
   for (const m of migrations) {
@@ -164,11 +169,11 @@ const UserModel = {
       'INSERT INTO users (email, first_name, last_name) VALUES (?, ?, ?)'
     ).run(email, firstName, lastName),
 
-  updateProfile: (id, firstName, lastName, ageCategory) => {
+  updateProfile: (id, firstName, lastName, ageCategory, birthDate) => {
     const isVerified = ageCategory === 'adult' ? 1 : 0;
     getDb().prepare(
-      'UPDATE users SET first_name = ?, last_name = ?, age_category = ?, is_verified = ? WHERE id = ?'
-    ).run(firstName, lastName, ageCategory, isVerified, id);
+      'UPDATE users SET first_name = ?, last_name = ?, age_category = ?, birth_date = ?, is_verified = ? WHERE id = ?'
+    ).run(firstName, lastName, ageCategory, birthDate, isVerified, id);
   },
 
   updateLastLogin: (id) =>
@@ -323,21 +328,20 @@ const BookingModel = {
       const bookingId = booking.lastInsertRowid;
 
       const insertParticipant = getDb().prepare(
-        'INSERT INTO participants (booking_id, first_name, last_name, age_category, is_main, child_age) VALUES (?, ?, ?, ?, ?, ?)'
+        'INSERT INTO participants (booking_id, first_name, last_name, age_category, is_main, child_age, age) VALUES (?, ?, ?, ?, ?, ?, ?)'
       );
 
       for (let i = 0; i < participants.length; i++) {
-        const ca = participants[i].childAge;
-        const childAgeVal = (ca !== undefined && ca !== null && ca !== '')
-          ? parseInt(ca, 10)
-          : null;
+        const ag = participants[i].age;
+        const ageVal = (ag !== undefined && ag !== null && ag !== '') ? parseInt(ag, 10) : null;
         insertParticipant.run(
           bookingId,
           participants[i].firstName,
           participants[i].lastName,
           participants[i].ageCategory || 'adult',
           participants[i].isMain ? 1 : 0,
-          Number.isInteger(childAgeVal) ? childAgeVal : null
+          ageVal, // kept for backward compatibility if needed
+          ageVal
         );
       }
 

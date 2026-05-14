@@ -11,19 +11,14 @@ const { requireAuth, requireProfile } = require('../middleware/auth');
 const { sendBookingConfirmation } = require('../services/emailService');
 const { apiLimiter } = require('../middleware/security');
 
-/** Wiek dziecka przy zapisie. Samodzielne dziecko: 7-17, dodatkowe: 0-17. */
-function parseChildAge(raw, allowUnder7 = false) {
+/** Wiek dziecka przy zapisie (7–17 lat), wymagany dla każdego uczestnika z kategorią „dziecko”. */
+function parseChildAge(raw) {
   if (raw === undefined || raw === null || String(raw).trim() === '') {
     return { ok: false, error: 'Podaj wiek dziecka (w latach).' };
   }
   const n = parseInt(String(raw).trim(), 10);
-  const minAge = allowUnder7 ? 0 : 7;
-  if (!Number.isInteger(n) || n < minAge || n > 17) {
-    if (allowUnder7) {
-      return { ok: false, error: 'Wiek dziecka musi być liczbą całkowitą od 0 do 17 lat.' };
-    } else {
-      return { ok: false, error: 'Wiek dziecka musi być liczbą całkowitą od 7 do 17 lat.' };
-    }
+  if (!Number.isInteger(n) || n < 7 || n > 17) {
+    return { ok: false, error: 'Wiek dziecka musi być liczbą całkowitą od 7 do 17 lat.' };
   }
   return { ok: true, value: n };
 }
@@ -144,19 +139,25 @@ router.get('/book/:classId', requireAuth, requireProfile, (req, res) => {
     : 0;
 
   // Sprawdź, czy dla danego typu użytkownika są miejsca
+  // Sprawdź, czy dla danego typu użytkownika są miejsca
   if (req.user.age_category === 'child') {
-    // Samodzielne zweryfikowane dziecko — potrzebuje miejsca w puli child
+    // Samodzielne zweryfikowane dziecko
     if (classData.class_type !== 'adult_and_child') {
-      return res.render('user/book', {
-        title: 'Zapis na zajęcia', classData, user: req.user,
-        error: 'Te zajęcia są przeznaczone tylko dla dorosłych.', notOpen: false, full: true
-      });
-    }
-    if (childSpotsLeft <= 0) {
-      return res.render('user/book', {
-        title: 'Zapis na zajęcia', classData, user: req.user,
-        error: 'Brak wolnych miejsc dla dzieci na te zajęcia.', notOpen: false, full: true
-      });
+      // Dla zajęć adult_only dziecko (13-17) bierze miejsce z puli dorosłych
+      if (adultSpotsLeft <= 0) {
+        return res.render('user/book', {
+          title: 'Zapis na zajęcia', classData, user: req.user,
+          error: 'Brak wolnych miejsc na te zajęcia.', notOpen: false, full: true
+        });
+      }
+    } else {
+      // Dla zajęć mixed bierze miejsce z puli dzieci
+      if (childSpotsLeft <= 0) {
+        return res.render('user/book', {
+          title: 'Zapis na zajęcia', classData, user: req.user,
+          error: 'Brak wolnych miejsc dla dzieci na te zajęcia.', notOpen: false, full: true
+        });
+      }
     }
   } else {
     // Dorosły — potrzebuje miejsca w puli adult
@@ -229,56 +230,71 @@ router.post('/book/:classId', requireAuth, requireProfile, apiLimiter, async (re
     });
   };
 
+  // Oblicz wiek głównego użytkownika
+  let mainUserAge = null;
+  if (req.user.birth_date) {
+    const bd = new Date(req.user.birth_date);
+    const today = new Date();
+    mainUserAge = today.getFullYear() - bd.getFullYear();
+    const m = today.getMonth() - bd.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < bd.getDate())) {
+      mainUserAge--;
+    }
+  }
+
   // Zbierz uczestników z podziałem na pule
   const participants = [];
 
-  if (req.user.age_category === 'child') {
-    const ageCheck = parseChildAge(req.body.selfChildAge, false);
-    if (!ageCheck.ok) {
-      return renderBookError(ageCheck.error);
+  let mainAgeCategory = req.user.age_category;
+  if (classData.class_type === 'adult_only') {
+    mainAgeCategory = 'adult'; // Wszyscy w adult_only zajmują miejsce adult
+    if (mainUserAge !== null && mainUserAge < 13) {
+      return renderBookError('Osoby poniżej 13 roku życia nie mogą brać udziału w tych zajęciach.');
     }
-    participants.push({
-      firstName: req.user.first_name,
-      lastName: req.user.last_name,
-      ageCategory: 'child',
-      isMain: true,
-      childAge: ageCheck.value
-    });
-  } else {
-    participants.push({
-      firstName: req.user.first_name,
-      lastName: req.user.last_name,
-      ageCategory: 'adult',
-      isMain: true,
-      childAge: null
-    });
+  }
 
-    const extraFirstNames = [].concat(req.body.extraFirstName || []);
-    const extraLastNames = [].concat(req.body.extraLastName || []);
-    const extraAgeCategories = [].concat(req.body.extraAgeCategory || []);
-    const extraChildAges = [].concat(req.body.extraChildAge || []);
+  participants.push({
+    firstName: req.user.first_name,
+    lastName: req.user.last_name,
+    ageCategory: mainAgeCategory,
+    isMain: true,
+    age: mainUserAge
+  });
 
-    for (let i = 0; i < extraFirstNames.length; i++) {
-      const fn = extraFirstNames[i]?.trim();
-      const ln = extraLastNames[i]?.trim();
-      const ac = extraAgeCategories[i] || 'adult';
-      if (fn && ln) {
-        let childAge = null;
-        if (ac === 'child') {
-          const ageCheck = parseChildAge(extraChildAges[i], true);
-          if (!ageCheck.ok) {
-            return renderBookError(ageCheck.error);
-          }
-          childAge = ageCheck.value;
-        }
-        participants.push({
-          firstName: fn,
-          lastName: ln,
-          ageCategory: ac,
-          isMain: false,
-          childAge
-        });
+  const extraFirstNames = [].concat(req.body.extraFirstName || []);
+  const extraLastNames = [].concat(req.body.extraLastName || []);
+  const extraAges = [].concat(req.body.extraAge || []);
+
+  for (let i = 0; i < extraFirstNames.length; i++) {
+    const fn = extraFirstNames[i]?.trim();
+    const ln = extraLastNames[i]?.trim();
+    const rawAge = extraAges[i];
+    if (fn && ln) {
+      if (rawAge === undefined || rawAge === null || String(rawAge).trim() === '') {
+        return renderBookError('Podaj wiek (w latach) dla każdej dopisywanej osoby.');
       }
+      const ageVal = parseInt(String(rawAge).trim(), 10);
+      if (!Number.isInteger(ageVal) || ageVal < 0 || ageVal > 120) {
+        return renderBookError('Wiek dopisywanej osoby musi być prawidłową liczbą lat.');
+      }
+
+      let ac;
+      if (classData.class_type === 'adult_only') {
+        if (ageVal < 13) {
+          return renderBookError(`Osoba dopisywana (${fn}) jest za młoda na te zajęcia (wymagane min. 13 lat).`);
+        }
+        ac = 'adult';
+      } else {
+        ac = ageVal >= 18 ? 'adult' : 'child';
+      }
+
+      participants.push({
+        firstName: fn,
+        lastName: ln,
+        ageCategory: ac,
+        isMain: false,
+        age: ageVal
+      });
     }
   }
 
