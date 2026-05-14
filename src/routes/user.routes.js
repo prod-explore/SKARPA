@@ -11,14 +11,19 @@ const { requireAuth, requireProfile } = require('../middleware/auth');
 const { sendBookingConfirmation } = require('../services/emailService');
 const { apiLimiter } = require('../middleware/security');
 
-/** Wiek dziecka przy zapisie (7–17 lat), wymagany dla każdego uczestnika z kategorią „dziecko”. */
-function parseChildAge(raw) {
+/** Wiek dziecka przy zapisie. Samodzielne dziecko: 7-17, dodatkowe: 0-17. */
+function parseChildAge(raw, allowUnder7 = false) {
   if (raw === undefined || raw === null || String(raw).trim() === '') {
     return { ok: false, error: 'Podaj wiek dziecka (w latach).' };
   }
   const n = parseInt(String(raw).trim(), 10);
-  if (!Number.isInteger(n) || n < 7 || n > 17) {
-    return { ok: false, error: 'Wiek dziecka musi być liczbą całkowitą od 7 do 17 lat.' };
+  const minAge = allowUnder7 ? 0 : 7;
+  if (!Number.isInteger(n) || n < minAge || n > 17) {
+    if (allowUnder7) {
+      return { ok: false, error: 'Wiek dziecka musi być liczbą całkowitą od 0 do 17 lat.' };
+    } else {
+      return { ok: false, error: 'Wiek dziecka musi być liczbą całkowitą od 7 do 17 lat.' };
+    }
   }
   return { ok: true, value: n };
 }
@@ -228,7 +233,7 @@ router.post('/book/:classId', requireAuth, requireProfile, apiLimiter, async (re
   const participants = [];
 
   if (req.user.age_category === 'child') {
-    const ageCheck = parseChildAge(req.body.selfChildAge);
+    const ageCheck = parseChildAge(req.body.selfChildAge, false);
     if (!ageCheck.ok) {
       return renderBookError(ageCheck.error);
     }
@@ -260,7 +265,7 @@ router.post('/book/:classId', requireAuth, requireProfile, apiLimiter, async (re
       if (fn && ln) {
         let childAge = null;
         if (ac === 'child') {
-          const ageCheck = parseChildAge(extraChildAges[i]);
+          const ageCheck = parseChildAge(extraChildAges[i], true);
           if (!ageCheck.ok) {
             return renderBookError(ageCheck.error);
           }
