@@ -147,7 +147,7 @@
               <% } %>
 
               <% const _totalSlots = (END_HOUR - START_HOUR) * 60 / SLOT_MIN; %>
-              <% for (let s = 0; s <= _totalSlots; s++) {
+              <% for (let s = 0; s < _totalSlots; s++) {
                 const _tm = START_HOUR * 60 + s * SLOT_MIN;
                 const _hh = String(Math.floor(_tm/60)).padStart(2,'0');
                 const _mm = String(_tm%60).padStart(2,'0');
@@ -160,7 +160,7 @@
               <% } %>
             </div>
 
-            <div class="wg-events-layer" style="height:calc(30px * <%= (END_HOUR - START_HOUR) * 60 / SLOT_MIN + 1 %>)">
+            <div class="wg-events-layer" style="height:calc(30px * <%= (END_HOUR - START_HOUR) * 60 / SLOT_MIN %>)">
               <% weekClasses.forEach(cls => {
                 const st = new Date(cls.start_time);
                 const dayInWeek = Math.round((new Date(weekStart.toDateString()) - new Date(st.toDateString())) / 86400000) * -1;

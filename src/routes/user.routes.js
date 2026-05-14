@@ -148,6 +148,13 @@ router.get('/dashboard', requireAuth, requireProfile, (req, res) => {
     userBooked: userBookings.some(b => b.class_id === c.id)
   }));
 
+  // Obliczamy ramy czasowe na podstawie WSZYSTKICH zajęć w danym tygodniu (żeby siatka wyglądała identycznie jak na głównej)
+  const allWeekClasses = allUpcoming.filter(c => {
+    const st = new Date(c.start_time);
+    return st >= weekStart && st <= weekEnd;
+  });
+  const { START_HOUR, END_HOUR, SLOT_MIN } = computeGridHours(allWeekClasses);
+
   // Zajęcia tygodniowe (dostępne) dla kalendarza
   const weekClasses = allUpcoming
     .filter(c => {
@@ -155,8 +162,6 @@ router.get('/dashboard', requireAuth, requireProfile, (req, res) => {
       return st >= weekStart && st <= weekEnd && !userBookings.some(b => b.class_id === c.id);
     })
     .map(c => ({ ...c, adult_taken: c.adult_taken || 0, child_taken: c.child_taken || 0 }));
-
-  const { START_HOUR, END_HOUR, SLOT_MIN } = computeGridHours(weekClasses);
 
   res.render('user/dashboard', {
     title: 'Mój panel',

@@ -50,7 +50,7 @@
           const SLOT_MIN = 30;
           const totalSlots = (END_HOUR - START_HOUR) * 60 / SLOT_MIN;
         %>
-        <% for (let s = 0; s <= totalSlots; s++) {
+        <% for (let s = 0; s < totalSlots; s++) {
           const totalMin = START_HOUR * 60 + s * SLOT_MIN;
           const hh = String(Math.floor(totalMin / 60)).padStart(2, '0');
           const mm = String(totalMin % 60).padStart(2, '0');
@@ -67,7 +67,7 @@
       </div><!-- .week-grid -->
 
       <!-- Overlay zajęć -->
-      <div class="wg-events-layer" aria-label="Zajęcia" style="height:calc(30px * <%= (END_HOUR - START_HOUR) * 60 / SLOT_MIN + 1 %>)">
+      <div class="wg-events-layer" aria-label="Zajęcia" style="height:calc(30px * <%= (END_HOUR - START_HOUR) * 60 / SLOT_MIN %>)">
         <%
           classes.forEach(cls => {
             const st = new Date(cls.start_time);

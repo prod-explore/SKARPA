@@ -80,7 +80,7 @@
           const _SH = START_HOUR, _EH = END_HOUR, _SM = SLOT_MIN;
           const _totalSlots = (_EH - _SH) * 60 / _SM;
         %>
-        <% for (let s = 0; s <= _totalSlots; s++) {
+        <% for (let s = 0; s < _totalSlots; s++) {
           const _totalMin = _SH * 60 + s * _SM;
           const _hh = String(Math.floor(_totalMin / 60)).padStart(2, '0');
           const _mm = String(_totalMin % 60).padStart(2, '0');
@@ -94,7 +94,7 @@
       </div>
 
       <!-- Overlay zajęć -->
-      <div class="wg-events-layer" aria-label="Zajęcia" style="height:calc(30px * <%= (END_HOUR - START_HOUR) * 60 / SLOT_MIN + 1 %>)">
+      <div class="wg-events-layer" aria-label="Zajęcia" style="height:calc(30px * <%= (END_HOUR - START_HOUR) * 60 / SLOT_MIN %>)">
         <%
           weekClasses.forEach(cls => {
             const st = new Date(cls.start_time);
@@ -192,7 +192,7 @@
       <div class="map-info-card">
         <h4>📍 Miejsce zajęć</h4>
         <p>KS "Skarpa Bytom"<br>ul. Wojciecha Kilara 33, Bytom Rozbark</p>
-        <a href="https://maps.google.com/maps?ll=50.342602,18.9281&z=16&t=m&hl=pl&gl=PL&mapclient=embed&cid=6182064567221362710" target="_blank" rel="noopener" class="btn btn--primary btn--sm">
+        <a href="https://maps.app.goo.gl/n8tuHMmicivzHh2f6" target="_blank" rel="noopener" class="btn btn--primary btn--sm">
           Nawiguj w Google Maps →
         </a>
       </div>
