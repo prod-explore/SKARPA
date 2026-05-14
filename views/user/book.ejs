@@ -220,10 +220,22 @@
           const extras = extraContainer ? extraContainer.querySelectorAll('.participant-block--extra').length : 0;
           const total = 1 + extras; // Główny zapisujący jest ZAWSZE wliczony
           countEl.textContent = total;
+          
+          if (addBtn) {
+            if (extras >= 4) {
+              addBtn.style.display = 'none';
+            } else {
+              addBtn.style.display = 'inline-block';
+            }
+          }
         }
 
         if (addBtn) {
           addBtn.addEventListener('click', function () {
+            if (extraCount >= 4) {
+              alert('Możesz zapisać maksymalnie 4 dodatkowe osoby na raz.');
+              return;
+            }
             extraCount++;
             const idx = extraCount;
 

@@ -265,6 +265,10 @@ router.post('/book/:classId', requireAuth, requireProfile, apiLimiter, async (re
   const extraLastNames = [].concat(req.body.extraLastName || []);
   const extraAges = [].concat(req.body.extraAge || []);
 
+  if (extraFirstNames.length > 4) {
+    return renderBookError('Możesz zapisać maksymalnie 4 dodatkowe osoby na raz.');
+  }
+
   for (let i = 0; i < extraFirstNames.length; i++) {
     const fn = extraFirstNames[i]?.trim();
     const ln = extraLastNames[i]?.trim();
