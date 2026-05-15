@@ -837,7 +837,7 @@ h3 { font-size: clamp(1.1rem, 2.5vw, 1.4rem); }
   z-index: 2;
 }
 .cal-modal-close:hover { background: var(--border); color: var(--text); }
-.cal-modal-body { padding: 1.5rem 1.75rem 1.75rem; }
+.cal-modal-body { padding: 1.5rem 1.75rem 1.75rem; max-height: 85vh; overflow-y: auto; }
 .cal-modal-title {
   font-size: 1.3rem;
   font-weight: 800;

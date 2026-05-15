@@ -184,7 +184,7 @@
                 data-time="<%= timeStr %> – <%= endStr %>"
                 data-instructor="<%= cls.instructor || '' %>"
                 data-child-instructor="<%= cls.child_instructor || '' %>"
-                data-description="<%= (cls.description || '').replace(/\"/g, '&quot;') %>"
+                data-description="<%= cls.description || '' %>"
                 data-adult-left="<%= adultLeft %>"
                 data-adult-max="<%= cls.max_spots %>"
                 data-child-left="<%= childLeft %>"
@@ -247,8 +247,28 @@
     document.getElementById('modalMeta').innerHTML = meta;
 
     const descEl = document.getElementById('modalDesc');
-    descEl.textContent = d.description || '';
-    descEl.style.display = d.description ? '' : 'none';
+    const fullDesc = d.description || '';
+    if (fullDesc.length > 250) {
+      const shortDesc = fullDesc.substring(0, 250) + '... ';
+      descEl.innerHTML = '';
+      const textSpan = document.createElement('span');
+      textSpan.textContent = shortDesc;
+      const moreBtn = document.createElement('a');
+      moreBtn.textContent = 'Pokaż więcej';
+      moreBtn.style.cursor = 'pointer';
+      moreBtn.style.color = 'var(--brand)';
+      moreBtn.style.fontWeight = '700';
+      moreBtn.onclick = () => {
+        textSpan.textContent = fullDesc;
+        moreBtn.style.display = 'none';
+      };
+      descEl.appendChild(textSpan);
+      descEl.appendChild(moreBtn);
+      descEl.style.display = '';
+    } else {
+      descEl.textContent = fullDesc;
+      descEl.style.display = fullDesc ? '' : 'none';
+    }
 
     let spots = `<div class="modal-spots-row">`;
     spots += `<span class="modal-spot-label ${adultLeft <= 3 ? 'low' : ''}">🧑 Dorośli: ${adultLeft} wolnych</span>`;

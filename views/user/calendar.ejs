@@ -168,7 +168,7 @@
                    data-time="<%= ev.timeStr %> – <%= ev.endStr %>"
                    data-instructor="<%= ev.instructor %>"
                    data-child-instructor="<%= ev.child_instructor %>"
-                   data-description="<%= ev.description.replace(/\"/g, '&quot;') %>"
+                   data-description="<%= ev.description %>"
                    data-adult-left="<%= ev.adultLeft %>"
                    data-adult-max="<%= ev.max_spots %>"
                    data-child-left="<%= ev.childLeft %>"
@@ -262,8 +262,28 @@
     meta += `<span>${isMixed ? '👥 Dorośli + Dzieci' : '🧑 Tylko dorośli'}</span>`;
     modalMeta.innerHTML = meta;
 
-    modalDesc.textContent = d.description || '';
-    modalDesc.style.display = d.description ? '' : 'none';
+    const fullDesc = d.description || '';
+    if (fullDesc.length > 250) {
+      const shortDesc = fullDesc.substring(0, 250) + '... ';
+      modalDesc.innerHTML = '';
+      const textSpan = document.createElement('span');
+      textSpan.textContent = shortDesc;
+      const moreBtn = document.createElement('a');
+      moreBtn.textContent = 'Pokaż więcej';
+      moreBtn.style.cursor = 'pointer';
+      moreBtn.style.color = 'var(--brand)';
+      moreBtn.style.fontWeight = '700';
+      moreBtn.onclick = () => {
+        textSpan.textContent = fullDesc;
+        moreBtn.style.display = 'none';
+      };
+      modalDesc.appendChild(textSpan);
+      modalDesc.appendChild(moreBtn);
+      modalDesc.style.display = '';
+    } else {
+      modalDesc.textContent = fullDesc;
+      modalDesc.style.display = fullDesc ? '' : 'none';
+    }
 
     let spots = `<div class="modal-spots-row">`;
     spots += `<span class="modal-spot-label ${adultLeft <= 3 ? 'low' : ''}">🧑 Dorośli: ${adultLeft} wolnych</span>`;
