@@ -121,11 +121,11 @@
           </div>
           <% } %>
         </div>
-        <div class="kcal-body" style="height:<%= gridHeight %>px;">
+        <div class="kcal-body" style="height:calc(var(--hh) * <%= totalHours %>);">
           <!-- Time gutter -->
           <div class="kcal-gutter">
             <% for (let h = START_HOUR; h < END_HOUR; h++) { %>
-            <div class="kcal-gutter-label" style="top:<%= (h - START_HOUR) * PX_PER_HOUR %>px;">
+            <div class="kcal-gutter-label" style="top:calc(var(--hh) * <%= h - START_HOUR %>);">
               <%= String(h).padStart(2, '0') %>:00
             </div>
             <% } %>
@@ -141,24 +141,24 @@
             <div class="kcal-col <%= isToday ? 'kcal-col--today' : '' %>">
               <!-- Hour gridlines -->
               <% for (let h = 0; h <= totalHours; h++) { %>
-              <div class="kcal-gridline" style="top:<%= h * PX_PER_HOUR %>px;"></div>
+              <div class="kcal-gridline" style="top:calc(var(--hh) * <%= h %>);"></div>
               <% } %>
               <!-- Half-hour gridlines -->
               <% for (let h = 0; h < totalHours; h++) { %>
-              <div class="kcal-gridline kcal-gridline--half" style="top:<%= h * PX_PER_HOUR + PX_PER_HOUR / 2 %>px;"></div>
+              <div class="kcal-gridline kcal-gridline--half" style="top:calc(var(--hh) * <%= h %> + var(--hh) * 0.5);"></div>
               <% } %>
 
               <!-- Events for this day -->
               <% dayEvents[d].forEach(ev => {
-                const topPx    = (ev.offsetMin / 60) * PX_PER_HOUR;
-                const heightPx = (ev.duration_min / 60) * PX_PER_HOUR;
+                const topMult    = (ev.offsetMin / 60);
+                const heightMult = (ev.duration_min / 60);
                 const colW     = 100 / ev.totalCols;
                 const leftPct  = ev.col * colW;
               %>
               <div class="kcal-ev <%= ev.isFull ? 'kcal-ev--full' : '' %> <%= ev.is_cancelled ? 'kcal-ev--cancelled' : '' %>"
                    style="
-                     top:<%= topPx %>px;
-                     height:<%= heightPx %>px;
+                     top:calc(var(--hh) * <%= topMult.toFixed(4) %>);
+                     height:calc(var(--hh) * <%= heightMult.toFixed(4) %>);
                      left:calc(<%= leftPct.toFixed(2) %>% + 2px);
                      width:calc(<%= colW.toFixed(2) %>% - 4px);
                      --ev-color:<%= ev.color %>;

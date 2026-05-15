@@ -1605,6 +1605,7 @@ h3 { font-size: clamp(1.1rem, 2.5vw, 1.4rem); }
    ============================================================ */
 
 .kcal-wrapper {
+  --hh: 64px;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: var(--bg-card);
@@ -1807,6 +1808,7 @@ h3 { font-size: clamp(1.1rem, 2.5vw, 1.4rem); }
 
 /* ── Mobile: horizontal scroll ─────────────────────────── */
 @media (max-width: 768px) {
+  .kcal-wrapper { --hh: 48px; }
   .kcal-body { min-width: 580px; }
   .kcal-header { min-width: 580px; }
   .kcal-ev-name { font-size: .72rem; }
@@ -1814,6 +1816,7 @@ h3 { font-size: clamp(1.1rem, 2.5vw, 1.4rem); }
   .kcal-ev-instr { font-size: .58rem; }
 }
 @media (max-width: 480px) {
+  .kcal-wrapper { --hh: 32px; }
   .kcal-header { grid-template-columns: 44px repeat(7, 1fr); min-width: 520px; }
   .kcal-body { grid-template-columns: 44px 1fr; min-width: 520px; }
   .kcal-gutter-label { font-size: .65rem; right: 4px; }
