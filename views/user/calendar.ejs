@@ -45,9 +45,6 @@
 
         <!-- Wiersze godzinowe -->
         <%
-          const START_HOUR = 7;
-          const END_HOUR = 22;
-          const SLOT_MIN = 30;
           const totalSlots = (END_HOUR - START_HOUR) * 60 / SLOT_MIN;
         %>
         <% for (let s = 0; s < totalSlots; s++) {

@@ -741,7 +741,7 @@ h3 { font-size: clamp(1.1rem, 2.5vw, 1.4rem); }
 /* Events overlay */
 .wg-events-layer {
   grid-column: 2 / -1;
-  grid-row: 2 / 32;
+  grid-row: 2 / -1;
   position: relative;
   pointer-events: none;
 }
