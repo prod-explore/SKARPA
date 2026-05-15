@@ -1,328 +1,322 @@
 <%- include('../partials/head') %>
 
-<%- include('../partials/navbar', { user: user }) %>
+  <%- include('../partials/navbar', { user: user }) %>
 
-<!-- HERO -->
-<section class="hero" id="hero-panel">
-  <div class="hero-bg"></div>
-  <div class="hero-content">
-    <div class="hero-badge">🇪🇺 Projekt UE — Bezpłatnie</div>
-    <h1 class="hero-title">
-      Panel<br>
-      <span class="hero-title--accent">Uczestnika</span>
-    </h1>
-    <p class="hero-subtitle">
-      Darmowe zajęcia wspinaczkowe dla uczestników projektu.<br>
-      Zarządzaj swoimi rezerwacjami na zajęcia wspinaczkowe.
-    </p>
-    <div class="hero-actions">
-      <% if (typeof user !== 'undefined' && user) { %>
-        <a href="/dashboard" class="btn btn--primary btn--lg">Przejdź do panelu →</a>
-      <% } else { %>
-        <a href="/login" class="btn btn--primary btn--lg">Zaloguj się →</a>
-      <% } %>
-    </div>
-    <div class="hero-stats">
-      <div class="hero-stat">
-        <span class="hero-stat-num">0 zł</span>
-        <span class="hero-stat-label">Koszt udziału</span>
-      </div>
-    </div>
-  </div>
-</section>
-
-
-<!-- BANER AWARYJNY — zapis przez e-mail -->
-<div class="emergency-contact-bar">
-  <div class="container">
-    <span class="emergency-icon">📧</span>
-    <span>Problemy z systemem? Zapisz się bezpośrednio przez e-mail:</span>
-    <a href="mailto:wspinanie.ue@gmail.com" class="emergency-link">wspinanie.ue@gmail.com</a>
-  </div>
-</div>
-
-
-
-
-<!-- SEKCJA: TYGODNIOWY WIDOK ZAJĘĆ -->
-<section class="section" id="section-calendar">
-  <div class="container container--wide">
-    <div class="section-header">
-      <span class="section-tag">Plan tygodnia</span>
-      <h2>Zajęcia w tym tygodniu</h2>
-    </div>
-
-    <div class="week-nav" style="margin-bottom:1.5rem;">
-      <span class="week-nav-label">
-        <%= weekStart.toLocaleDateString('pl-PL', { day: 'numeric', month: 'long' }) %> –
-        <%= weekEnd.toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' }) %>
-      </span>
-      <a href="/calendar" class="btn btn--outline btn--sm">Pełny kalendarz →</a>
-    </div>
-
-    <div class="week-grid-wrapper">
-      <div class="week-grid">
-        <!-- Nagłówek dni -->
-        <div class="wg-time-col wg-header"></div>
-        <% for (let d = 0; d < 7; d++) {
-          const day = new Date(weekStart);
-          day.setDate(weekStart.getDate() + d);
-          const isToday = day.toDateString() === new Date().toDateString();
-        %>
-        <div class="wg-day-header <%= isToday ? 'wg-day-header--today' : '' %>">
-          <span class="wg-day-name"><%= day.toLocaleDateString('pl-PL', { weekday: 'short' }) %></span>
-          <span class="wg-day-num <%= isToday ? 'wg-day-num--today' : '' %>"><%= day.getDate() %></span>
+    <!-- HERO -->
+    <section class="hero" id="hero-panel">
+      <div class="hero-bg"></div>
+      <div class="hero-content">
+        <div class="hero-badge">🇪🇺 Projekt UE — Bezpłatnie</div>
+        <h1 class="hero-title">
+          Panel<br>
+          <span class="hero-title--accent">Uczestnika</span>
+        </h1>
+        <p class="hero-subtitle">
+          Darmowe zajęcia wspinaczkowe dla uczestników projektu.<br>
+          Zarządzaj swoimi rezerwacjami na zajęcia wspinaczkowe.
+        </p>
+        <div class="hero-actions">
+          <% if (typeof user !=='undefined' && user) { %>
+            <a href="/dashboard" class="btn btn--primary btn--lg">Przejdź do panelu →</a>
+            <% } else { %>
+              <a href="/login" class="btn btn--primary btn--lg">Zaloguj się →</a>
+              <% } %>
         </div>
-        <% } %>
-
-        <!-- Wiersze godzinowe -->
-        <%
-          const _SH = START_HOUR, _EH = END_HOUR, _SM = SLOT_MIN;
-          const _totalSlots = (_EH - _SH) * 60 / _SM;
-        %>
-        <% for (let s = 0; s < _totalSlots; s++) {
-          const _totalMin = _SH * 60 + s * _SM;
-          const _hh = String(Math.floor(_totalMin / 60)).padStart(2, '0');
-          const _mm = String(_totalMin % 60).padStart(2, '0');
-          const _isHour = _totalMin % 60 === 0;
-        %>
-        <div class="wg-time-label <%= _isHour ? '' : 'wg-time-label--half' %>"><%= _isHour ? _hh + ':' + _mm : '' %></div>
-        <% for (let d = 0; d < 7; d++) { %>
-        <div class="wg-cell <%= _isHour ? 'wg-cell--hour' : '' %>"></div>
-        <% } %>
-        <% } %>
-      <!-- Overlay zajęć -->
-      <div class="wg-events-layer" aria-label="Zajęcia">
-        <%
-          weekClasses.forEach(cls => {
-            const st = new Date(cls.start_time);
-            const dayInWeek = Math.round((new Date(weekStart.toDateString()) - new Date(st.toDateString())) / 86400000) * -1;
-            if (dayInWeek < 0 || dayInWeek > 6) return;
-
-            const startMin = st.getHours() * 60 + st.getMinutes();
-            const offsetFromStart = startMin - START_HOUR * 60;
-            if (offsetFromStart < 0) return;
-            const topPct = (offsetFromStart / ((END_HOUR - START_HOUR) * 60)) * 100;
-            const heightPct = (cls.duration_min / ((END_HOUR - START_HOUR) * 60)) * 100;
-
-            const adultLeft = cls.max_spots - (cls.adult_taken || 0);
-            const childLeft = cls.class_type === 'adult_and_child' ? (cls.max_child_spots - (cls.child_taken || 0)) : 0;
-            const isFull = adultLeft <= 0;
-
-            const et = new Date(st.getTime() + cls.duration_min * 60000);
-            const timeStr = st.toLocaleTimeString('pl-PL', {hour:'2-digit', minute:'2-digit'});
-            const endStr  = et.toLocaleTimeString('pl-PL', {hour:'2-digit', minute:'2-digit'});
-            const color = cls.color || '#6366f1';
-            const leftPct = (dayInWeek / 7) * 100;
-            const widthPct = (1 / 7) * 100;
-        %>
-        <div
-          class="wg-event <%= isFull ? 'wg-event--full' : '' %>"
-          <%- `style="top:${topPct.toFixed(3)}%;height:${heightPct.toFixed(3)}%;left:calc(${leftPct.toFixed(3)}% + 4px);width:calc(${widthPct.toFixed(3)}% - 8px);background:${color};"` %>
-          data-id="<%= cls.id %>"
-          data-name="<%= cls.name %>"
-          data-time="<%= timeStr %> – <%= endStr %>"
-          data-instructor="<%= cls.instructor || '' %>"
-          data-child-instructor="<%= cls.child_instructor || '' %>"
-          data-description="<%= cls.description || '' %>"
-          data-adult-left="<%= adultLeft %>"
-          data-adult-max="<%= cls.max_spots %>"
-          data-child-left="<%= childLeft %>"
-          data-child-max="<%= cls.max_child_spots %>"
-          data-type="<%= cls.class_type %>"
-          data-cancelled="<%= cls.is_cancelled ? '1' : '0' %>"
-          role="button" tabindex="0" aria-label="<%= cls.name %>"
-        >
-          <span class="wg-event-name"><%= cls.name %></span>
-          <span class="wg-event-time"><%= timeStr %> – <%= endStr %></span>
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <span class="hero-stat-num">0 zł</span>
+            <span class="hero-stat-label">Koszt udziału</span>
+          </div>
         </div>
-        <% }); %>
       </div>
+    </section>
 
-      </div>
-    </div>
-  </div>
-</section>
 
-<!-- SEKCJA: INSTRUKCJE -->
-<section class="section section--light">
-  <div class="container container--narrow">
-    <div class="section-header">
-      <span class="section-tag">Zasady uczestnictwa</span>
-      <h2>Jak działają zapisy?</h2>
-    </div>
-    <ul class="instruction-list">
-      <li>
-        <strong>Proste zapisy:</strong> Załóż konto i zapisz siebie lub dodatkowe osoby (w tym dzieci)
-        na wybrany termin, dopóki są wolne miejsca. Jeśli z jakiegoś powodu musisz zrezygnować
-        — pamiętaj, aby wypisać się z zajęć.
-        Maksymalnie możesz zapisać oprócz siebie <strong>4 inne osoby</strong>.
-      </li>
-      <li>
-        <strong>Osoba niepełnoletnia:</strong> żeby osoba niepełnoletnia mogła samodzielnie
-        rejestrować się na zajęcia, musi najpierw dostarczyć podpisany przez rodzica
-        formularz unijny dostępny w recepcji lub na stronie projektu
-        <em>(Załącznik nr 1)</em>. Następnie zostanie zaakceptowana przez administratora.
-        Rodzic lub pełnoletni opiekun może zapisać dziecko samodzielnie przez swoje konto
-        — bez konieczności dodatkowej zgody.
-      </li>
-      <li>
-        <strong>Pytania?</strong> Skontaktuj się z nami:
-        <a href="mailto:wspinanie.ue@gmail.com">wspinanie.ue@gmail.com</a>
-      </li>
-    </ul>
-  </div>
-</section>
-
-<!-- SEKCJA: MAPA -->
-<section class="section section--map">
-  <div class="container">
-    <div class="section-header">
-      <span class="section-tag">Nasza lokalizacja</span>
-      <h2>Gdzie odbywają się zajęcia?</h2>
-    </div>
-    <div class="map-wrapper">
-      <iframe
-        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2546.284345570785!2d18.928098576550873!3d50.34260167157167!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x4716d34cb979d97f%3A0x55caf8fee26a2016!2sSkarpa%20Bytom%20Rozbark!5e0!3m2!1spl!2spl!4v1776429791392!5m2!1spl!2spl"
-        width="100%" height="400" style="border:0;border-radius:12px;"
-        allowfullscreen="" loading="lazy"
-        referrerpolicy="no-referrer-when-downgrade"
-        title="Skarpa Bytom Rozbark">
-      </iframe>
-      <div class="map-info-card">
-        <h4>📍 Miejsce zajęć</h4>
-        <p>KS "Skarpa Bytom"<br>ul. Wojciecha Kilara 33, Bytom Rozbark</p>
-        <a href="https://maps.app.goo.gl/n8tuHMmicivzHh2f6" target="_blank" rel="noopener" class="btn btn--primary btn--sm">
-          Nawiguj w Google Maps →
-        </a>
+    <!-- BANER AWARYJNY — zapis przez e-mail -->
+    <div class="emergency-contact-bar">
+      <div class="container">
+        <span class="emergency-icon">📧</span>
+        <span>Problemy z systemem? Zapisz się bezpośrednio przez e-mail:</span>
+        <a href="mailto:wspinanie.ue@gmail.com" class="emergency-link">wspinanie.ue@gmail.com</a>
       </div>
     </div>
-  </div>
-</section>
 
-<!-- CTA -->
-<section class="section section--cta">
-  <div class="container">
-    <div class="cta-box">
-      <div class="cta-content">
-        <h2>Gotowy na zajęcia?</h2>
-        <p>Zaloguj się do panelu i zarządzaj zapisanymi osobami.</p>
+
+
+
+    <!-- SEKCJA: TYGODNIOWY WIDOK ZAJĘĆ -->
+    <section class="section" id="section-calendar">
+      <div class="container container--wide">
+        <div class="section-header">
+          <span class="section-tag">Plan tygodnia</span>
+          <h2>Zajęcia w tym tygodniu</h2>
+        </div>
+
+        <div class="week-nav" style="margin-bottom:1.5rem;">
+          <span class="week-nav-label">
+            <%= weekStart.toLocaleDateString('pl-PL', { day: 'numeric' , month: 'long' }) %> –
+              <%= weekEnd.toLocaleDateString('pl-PL', { day: 'numeric' , month: 'long' , year: 'numeric' }) %>
+          </span>
+          <a href="/calendar" class="btn btn--outline btn--sm">Pełny kalendarz →</a>
+        </div>
+
+        <div class="week-grid-wrapper">
+          <div class="week-grid">
+            <!-- Nagłówek dni -->
+            <div class="wg-time-col wg-header"></div>
+            <% for (let d=0; d < 7; d++) { const day=new Date(weekStart); day.setDate(weekStart.getDate() + d); const
+              isToday=day.toDateString()===new Date().toDateString(); %>
+              <div class="wg-day-header <%= isToday ? 'wg-day-header--today' : '' %>">
+                <span class="wg-day-name">
+                  <%= day.toLocaleDateString('pl-PL', { weekday: 'short' }) %>
+                </span>
+                <span class="wg-day-num <%= isToday ? 'wg-day-num--today' : '' %>">
+                  <%= day.getDate() %>
+                </span>
+              </div>
+              <% } %>
+
+                <!-- Wiersze godzinowe -->
+                <% const _SH=START_HOUR, _EH=END_HOUR, _SM=SLOT_MIN; const _totalSlots=(_EH - _SH) * 60 / _SM; %>
+                  <% for (let s=0; s < _totalSlots; s++) { const _totalMin=_SH * 60 + s * _SM; const
+                    _hh=String(Math.floor(_totalMin / 60)).padStart(2, '0' ); const _mm=String(_totalMin %
+                    60).padStart(2, '0' ); const _isHour=_totalMin % 60===0; %>
+                    <div class="wg-time-label <%= _isHour ? '' : 'wg-time-label--half' %>">
+                      <%= _isHour ? _hh + ':' + _mm : '' %>
+                    </div>
+                    <% for (let d=0; d < 7; d++) { %>
+                      <div class="wg-cell <%= _isHour ? 'wg-cell--hour' : '' %>"></div>
+                      <% } %>
+                        <% } %>
+                          <!-- Overlay zajęć -->
+                          <div class="wg-events-layer" aria-label="Zajęcia">
+                            <% weekClasses.forEach(cls=> {
+                              const st = new Date(cls.start_time);
+                              const dayInWeek = Math.round((new Date(weekStart.toDateString()) - new
+                              Date(st.toDateString())) / 86400000) * -1;
+                              if (dayInWeek < 0 || dayInWeek> 6) return;
+
+                                const startMin = st.getHours() * 60 + st.getMinutes();
+                                const offsetFromStart = startMin - START_HOUR * 60;
+                                if (offsetFromStart < 0) return; const topPct=(offsetFromStart / ((END_HOUR -
+                                  START_HOUR) * 60)) * 100; const heightPct=(cls.duration_min / ((END_HOUR - START_HOUR)
+                                  * 60)) * 100; const adultLeft=cls.max_spots - (cls.adult_taken || 0); const
+                                  childLeft=cls.class_type==='adult_and_child' ? (cls.max_child_spots - (cls.child_taken
+                                  || 0)) : 0; const isFull=adultLeft <=0; const et=new Date(st.getTime() +
+                                  cls.duration_min * 60000); const timeStr=st.toLocaleTimeString('pl-PL',
+                                  {hour:'2-digit', minute:'2-digit'}); const endStr=et.toLocaleTimeString('pl-PL',
+                                  {hour:'2-digit', minute:'2-digit'}); const color=cls.color || '#6366f1' ; const
+                                  leftPct=(dayInWeek / 7) * 100; const widthPct=(1 / 7) * 100; %>
+                                  <div class="wg-event <%= isFull ? 'wg-event--full' : '' %>" <%-
+                                    `style="top:${topPct.toFixed(3)}%;height:${heightPct.toFixed(3)}%;left:calc(${leftPct.toFixed(3)}% + 4px);width:calc(${widthPct.toFixed(3)}% - 8px);background:${color};"
+                                    ` %>
+                                    data-id="<%= cls.id %>"
+                                      data-name="<%= cls.name %>"
+                                        data-time="<%= timeStr %> – <%= endStr %>"
+                                            data-instructor="<%= cls.instructor || '' %>"
+                                              data-child-instructor="<%= cls.child_instructor || '' %>"
+                                                data-description="<%= cls.description || '' %>"
+                                                  data-adult-left="<%= adultLeft %>"
+                                                    data-adult-max="<%= cls.max_spots %>"
+                                                      data-child-left="<%= childLeft %>"
+                                                        data-child-max="<%= cls.max_child_spots %>"
+                                                          data-type="<%= cls.class_type %>"
+                                                            data-cancelled="<%= cls.is_cancelled ? '1' : '0' %>"
+                                                              role="button" tabindex="0" aria-label="<%= cls.name %>"
+                                                                >
+                                                                <span class="wg-event-name">
+                                                                  <%= cls.name %>
+                                                                </span>
+                                                                <span class="wg-event-time">
+                                                                  <%= timeStr %> – <%= endStr %>
+                                                                </span>
+                                  </div>
+                                  <% }); %>
+                          </div>
+
+          </div>
+        </div>
       </div>
-      <div class="cta-actions">
-        <% if (typeof user !== 'undefined' && user) { %>
-          <a href="/dashboard" class="btn btn--white btn--lg">Twój Panel →</a>
-        <% } else { %>
-          <a href="/login" class="btn btn--white btn--lg">Zaloguj się / Zarejestruj →</a>
-        <% } %>
+    </section>
+
+    <!-- SEKCJA: INSTRUKCJE -->
+    <section class="section section--light">
+      <div class="container container--narrow">
+        <div class="section-header">
+          <span class="section-tag">Zasady uczestnictwa</span>
+          <h2>Jak działają zapisy?</h2>
+        </div>
+        <ul class="instruction-list">
+          <li>
+            <strong>Proste zapisy:</strong> Załóż konto i zapisz siebie lub dodatkowe osoby (w tym dzieci)
+            na wybrany termin, dopóki są wolne miejsca. Jeśli z jakiegoś powodu musisz zrezygnować
+            — pamiętaj, aby wypisać się z zajęć.
+            Maksymalnie możesz zapisać oprócz siebie <strong>4 inne osoby</strong>.
+          </li>
+          <li>
+            <strong>Osoba niepełnoletnia:</strong> żeby osoba niepełnoletnia mogła samodzielnie
+            rejestrować się na zajęcia, musi najpierw dostarczyć podpisany przez rodzica
+            formularz unijny dostępny w recepcji. Następnie zostanie zaakceptowana przez administratora.
+            Rodzic lub pełnoletni opiekun może zapisać dziecko samodzielnie przez swoje konto
+            — bez konieczności dodatkowej zgody.
+          </li>
+          <li>
+            <strong>Pytania?</strong> Skontaktuj się z nami:
+            <a href="mailto:wspinanie.ue@gmail.com">wspinanie.ue@gmail.com</a>
+          </li>
+        </ul>
       </div>
-    </div>
-  </div>
-</section>
+    </section>
 
-<%- include('../partials/footer') %>
+    <!-- SEKCJA: MAPA -->
+    <section class="section section--map">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-tag">Nasza lokalizacja</span>
+          <h2>Gdzie odbywają się zajęcia?</h2>
+        </div>
+        <div class="map-wrapper">
+          <iframe
+            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2546.284345570785!2d18.928098576550873!3d50.34260167157167!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x4716d34cb979d97f%3A0x55caf8fee26a2016!2sSkarpa%20Bytom%20Rozbark!5e0!3m2!1spl!2spl!4v1776429791392!5m2!1spl!2spl"
+            width="100%" height="400" style="border:0;border-radius:12px;" allowfullscreen="" loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade" title="Skarpa Bytom Rozbark">
+          </iframe>
+          <div class="map-info-card">
+            <h4>📍 Miejsce zajęć</h4>
+            <p>KS "Skarpa Bytom"<br>ul. Wojciecha Kilara 33, Bytom Rozbark</p>
+            <a href="https://maps.app.goo.gl/n8tuHMmicivzHh2f6" target="_blank" rel="noopener"
+              class="btn btn--primary btn--sm">
+              Nawiguj w Google Maps →
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
 
-<!-- MODAL SZCZEGÓŁÓW (index) -->
-<div id="classModal" class="cal-modal-overlay" aria-modal="true" role="dialog" style="display:none;">
-  <div class="cal-modal">
-    <button class="cal-modal-close" id="modalClose" aria-label="Zamknij">✕</button>
-    <div class="cal-modal-accent" id="modalAccent"></div>
-    <div class="cal-modal-body">
-      <h2 class="cal-modal-title" id="modalTitle"></h2>
-      <p class="cal-modal-time" id="modalTime"></p>
-      <div class="cal-modal-meta" id="modalMeta"></div>
-      <p class="cal-modal-desc" id="modalDesc"></p>
-      <div class="cal-modal-spots" id="modalSpots"></div>
-      <div class="cal-modal-actions" id="modalActions"></div>
-    </div>
-  </div>
-</div>
+    <!-- CTA -->
+    <section class="section section--cta">
+      <div class="container">
+        <div class="cta-box">
+          <div class="cta-content">
+            <h2>Gotowy na zajęcia?</h2>
+            <p>Zaloguj się do panelu i zarządzaj zapisanymi osobami.</p>
+          </div>
+          <div class="cta-actions">
+            <% if (typeof user !=='undefined' && user) { %>
+              <a href="/dashboard" class="btn btn--white btn--lg">Twój Panel →</a>
+              <% } else { %>
+                <a href="/login" class="btn btn--white btn--lg">Zaloguj się / Zarejestruj →</a>
+                <% } %>
+          </div>
+        </div>
+      </div>
+    </section>
 
-<script>
-  const modal        = document.getElementById('classModal');
-  const modalClose   = document.getElementById('modalClose');
-  const modalAccent  = document.getElementById('modalAccent');
-  const modalTitle   = document.getElementById('modalTitle');
-  const modalTime    = document.getElementById('modalTime');
-  const modalMeta    = document.getElementById('modalMeta');
-  const modalDesc    = document.getElementById('modalDesc');
-  const modalSpots   = document.getElementById('modalSpots');
-  const modalActions = document.getElementById('modalActions');
-  const isLoggedIn   = ('<%= typeof user !== "undefined" && user ? "true" : "false" %>' === 'true');
+    <%- include('../partials/footer') %>
 
-  function openModal(el) {
-    const d = el.dataset;
-    const isCancelled = d.cancelled === '1';
-    const adultLeft   = parseInt(d.adultLeft);
-    const childLeft   = parseInt(d.childLeft);
-    const isFull      = adultLeft <= 0;
-    const isMixed     = d.type === 'adult_and_child';
+      <!-- MODAL SZCZEGÓŁÓW (index) -->
+      <div id="classModal" class="cal-modal-overlay" aria-modal="true" role="dialog" style="display:none;">
+        <div class="cal-modal">
+          <button class="cal-modal-close" id="modalClose" aria-label="Zamknij">✕</button>
+          <div class="cal-modal-accent" id="modalAccent"></div>
+          <div class="cal-modal-body">
+            <h2 class="cal-modal-title" id="modalTitle"></h2>
+            <p class="cal-modal-time" id="modalTime"></p>
+            <div class="cal-modal-meta" id="modalMeta"></div>
+            <p class="cal-modal-desc" id="modalDesc"></p>
+            <div class="cal-modal-spots" id="modalSpots"></div>
+            <div class="cal-modal-actions" id="modalActions"></div>
+          </div>
+        </div>
+      </div>
 
-    modalAccent.style.background = el.style.background;
-    modalTitle.textContent = d.name;
-    modalTime.textContent  = d.time;
+      <script>
+        const modal = document.getElementById('classModal');
+        const modalClose = document.getElementById('modalClose');
+        const modalAccent = document.getElementById('modalAccent');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalTime = document.getElementById('modalTime');
+        const modalMeta = document.getElementById('modalMeta');
+        const modalDesc = document.getElementById('modalDesc');
+        const modalSpots = document.getElementById('modalSpots');
+        const modalActions = document.getElementById('modalActions');
+        const isLoggedIn = ('<%= typeof user !== "undefined" && user ? "true" : "false" %>' === 'true');
 
-    let meta = '';
-    if (d.instructor)      meta += `<span>👤 ${d.instructor}</span>`;
-    if (d.childInstructor) meta += `<span>🧒 Animacje: ${d.childInstructor}</span>`;
-    meta += `<span>${isMixed ? '👥 Dorośli + Dzieci' : '🧑 Tylko dorośli'}</span>`;
-    modalMeta.innerHTML = meta;
+        function openModal(el) {
+          const d = el.dataset;
+          const isCancelled = d.cancelled === '1';
+          const adultLeft = parseInt(d.adultLeft);
+          const childLeft = parseInt(d.childLeft);
+          const isFull = adultLeft <= 0;
+          const isMixed = d.type === 'adult_and_child';
 
-    const fullDesc = d.description || '';
-    if (fullDesc.length > 250) {
-      const shortDesc = fullDesc.substring(0, 250) + '... ';
-      modalDesc.innerHTML = '';
-      const textSpan = document.createElement('span');
-      textSpan.textContent = shortDesc;
-      const moreBtn = document.createElement('a');
-      moreBtn.textContent = 'Pokaż więcej';
-      moreBtn.style.cursor = 'pointer';
-      moreBtn.style.color = 'var(--brand)';
-      moreBtn.style.fontWeight = '700';
-      moreBtn.onclick = () => {
-        textSpan.textContent = fullDesc;
-        moreBtn.style.display = 'none';
-      };
-      modalDesc.appendChild(textSpan);
-      modalDesc.appendChild(moreBtn);
-      modalDesc.style.display = '';
-    } else {
-      modalDesc.textContent = fullDesc;
-      modalDesc.style.display = fullDesc ? '' : 'none';
-    }
+          modalAccent.style.background = el.style.background;
+          modalTitle.textContent = d.name;
+          modalTime.textContent = d.time;
 
-    let spots = `<div class="modal-spots-row">`;
-    spots += `<span class="modal-spot-label ${adultLeft <= 3 ? 'low' : ''}">🧑 Dorośli: ${adultLeft} wolnych</span>`;
-    if (isMixed) spots += `<span class="modal-spot-label ${childLeft <= 3 ? 'low' : ''}">👦 Dzieci: ${childLeft} wolnych</span>`;
-    spots += `</div>`;
-    modalSpots.innerHTML = spots;
+          let meta = '';
+          if (d.instructor) meta += `<span>👤 ${d.instructor}</span>`;
+          if (d.childInstructor) meta += `<span>🧒 Animacje: ${d.childInstructor}</span>`;
+          meta += `<span>${isMixed ? '👥 Dorośli + Dzieci' : '🧑 Tylko dorośli'}</span>`;
+          modalMeta.innerHTML = meta;
 
-    let actions = '';
-    if (isCancelled)   actions = `<span class="badge badge--full">Zajęcia odwołane</span>`;
-    else if (isFull)   actions = `<span class="badge badge--full">Brak miejsc</span>`;
-    else if (isLoggedIn) actions = `<a href="/book/${d.id}" class="btn btn--primary btn--lg">Zapisz się →</a>`;
-    else               actions = `<a href="/login?next=/book/${d.id}" class="btn btn--primary btn--lg">Zaloguj się, by się zapisać →</a>`;
-    modalActions.innerHTML = actions;
+          const fullDesc = d.description || '';
+          if (fullDesc.length > 250) {
+            const shortDesc = fullDesc.substring(0, 250) + '... ';
+            modalDesc.innerHTML = '';
+            const textSpan = document.createElement('span');
+            textSpan.textContent = shortDesc;
+            const moreBtn = document.createElement('a');
+            moreBtn.textContent = 'Pokaż więcej';
+            moreBtn.style.cursor = 'pointer';
+            moreBtn.style.color = 'var(--brand)';
+            moreBtn.style.fontWeight = '700';
+            moreBtn.onclick = () => {
+              textSpan.textContent = fullDesc;
+              moreBtn.style.display = 'none';
+            };
+            modalDesc.appendChild(textSpan);
+            modalDesc.appendChild(moreBtn);
+            modalDesc.style.display = '';
+          } else {
+            modalDesc.textContent = fullDesc;
+            modalDesc.style.display = fullDesc ? '' : 'none';
+          }
 
-    modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-    modalClose.focus();
-  }
+          let spots = `<div class="modal-spots-row">`;
+          spots += `<span class="modal-spot-label ${adultLeft <= 3 ? 'low' : ''}">🧑 Dorośli: ${adultLeft} wolnych</span>`;
+          if (isMixed) spots += `<span class="modal-spot-label ${childLeft <= 3 ? 'low' : ''}">👦 Dzieci: ${childLeft} wolnych</span>`;
+          spots += `</div>`;
+          modalSpots.innerHTML = spots;
 
-  function closeModal() {
-    modal.style.display = 'none';
-    document.body.style.overflow = '';
-  }
+          let actions = '';
+          if (isCancelled) actions = `<span class="badge badge--full">Zajęcia odwołane</span>`;
+          else if (isFull) actions = `<span class="badge badge--full">Brak miejsc</span>`;
+          else if (isLoggedIn) actions = `<a href="/book/${d.id}" class="btn btn--primary btn--lg">Zapisz się →</a>`;
+          else actions = `<a href="/login?next=/book/${d.id}" class="btn btn--primary btn--lg">Zaloguj się, by się zapisać →</a>`;
+          modalActions.innerHTML = actions;
 
-  document.querySelectorAll('.wg-event').forEach(el => {
-    el.addEventListener('click', () => openModal(el));
-    el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') openModal(el); });
-  });
+          modal.style.display = 'flex';
+          document.body.style.overflow = 'hidden';
+          modalClose.focus();
+        }
 
-  modalClose.addEventListener('click', closeModal);
-  modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
-</script>
+        function closeModal() {
+          modal.style.display = 'none';
+          document.body.style.overflow = '';
+        }
 
-<script src="/js/main.js"></script>
-</body>
-</html>
+        document.querySelectorAll('.wg-event').forEach(el => {
+          el.addEventListener('click', () => openModal(el));
+          el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') openModal(el); });
+        });
+
+        modalClose.addEventListener('click', closeModal);
+        modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+      </script>
+
+      <script src="/js/main.js"></script>
+      </body>
+
+      </html>
