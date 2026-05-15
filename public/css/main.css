@@ -1593,9 +1593,6 @@ h3 { font-size: clamp(1.1rem, 2.5vw, 1.4rem); }
 .instruction-list li strong {
   color: var(--primary-dark);
   font-weight: 700;
-  font-size: 1.15rem;
-  display: block;
-  margin-bottom: 0.25rem;
 }
 
 
