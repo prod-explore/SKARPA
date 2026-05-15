@@ -670,6 +670,7 @@ h3 { font-size: clamp(1.1rem, 2.5vw, 1.4rem); }
   display: grid;
   grid-template-columns: 52px repeat(7, 1fr);
   min-width: 680px;
+  position: relative;
 }
 
 .wg-header { background: transparent; }
@@ -739,10 +740,9 @@ h3 { font-size: clamp(1.1rem, 2.5vw, 1.4rem); }
 
 /* Events overlay */
 .wg-events-layer {
-  position: absolute;
-  top: 52px; /* header height */
-  left: 52px; /* time col width */
-  right: 0;
+  grid-column: 2 / -1;
+  grid-row: 2 / 32;
+  position: relative;
   pointer-events: none;
 }
 

@@ -115,7 +115,7 @@
                   <td>
                     <div class="mini-bar-wrap">
                       <div class="mini-bar">
-                        <div class="mini-bar-fill" style="width:<%= adultPct %>%"></div>
+                        <div class="mini-bar-fill" <%- `style="width:${adultPct}%"` %>></div>
                       </div>
                       <span><%= adultTaken %>/<%= cls.max_spots %></span>
                     </div>
@@ -124,7 +124,7 @@
                     <% if (cls.class_type === 'adult_and_child' && cls.max_child_spots > 0) { %>
                     <div class="mini-bar-wrap">
                       <div class="mini-bar">
-                        <div class="mini-bar-fill" style="width:<%= childPct %>%"></div>
+                        <div class="mini-bar-fill" <%- `style="width:${childPct}%"` %>></div>
                       </div>
                       <span><%= childTaken %>/<%= cls.max_child_spots %></span>
                     </div>

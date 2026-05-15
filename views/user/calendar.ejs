@@ -64,10 +64,8 @@
         <% } %>
         <% } %>
 
-      </div><!-- .week-grid -->
-
       <!-- Overlay zajęć -->
-      <div class="wg-events-layer" aria-label="Zajęcia" style="height:calc(30px * <%= (END_HOUR - START_HOUR) * 60 / SLOT_MIN %>)">
+      <div class="wg-events-layer" aria-label="Zajęcia">
         <%
           classes.forEach(cls => {
             const st = new Date(cls.start_time);
@@ -126,6 +124,7 @@
         <% }); %>
       </div><!-- .wg-events-layer -->
 
+      </div><!-- .week-grid -->
     </div><!-- .week-grid-wrapper -->
 
     <% if (!user) { %>

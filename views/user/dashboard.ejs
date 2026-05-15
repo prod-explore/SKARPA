@@ -158,9 +158,7 @@
               <div class="wg-cell <%= _ih?'wg-cell--hour':'' %>"></div>
               <% } %>
               <% } %>
-            </div>
-
-            <div class="wg-events-layer" style="height:calc(30px * <%= (END_HOUR - START_HOUR) * 60 / SLOT_MIN %>)">
+            <div class="wg-events-layer">
               <% weekClasses.forEach(cls => {
                 const st = new Date(cls.start_time);
                 const dayInWeek = Math.round((new Date(weekStart.toDateString()) - new Date(st.toDateString())) / 86400000) * -1;
@@ -198,6 +196,8 @@
                 <span class="wg-event-time"><%= timeStr %> – <%= endStr %></span>
               </div>
               <% }); %>
+            </div>
+
             </div>
           </div>
         <% } %>

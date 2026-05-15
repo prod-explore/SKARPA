@@ -91,10 +91,8 @@
         <div class="wg-cell <%= _isHour ? 'wg-cell--hour' : '' %>"></div>
         <% } %>
         <% } %>
-      </div>
-
       <!-- Overlay zajęć -->
-      <div class="wg-events-layer" aria-label="Zajęcia" style="height:calc(30px * <%= (END_HOUR - START_HOUR) * 60 / SLOT_MIN %>)">
+      <div class="wg-events-layer" aria-label="Zajęcia">
         <%
           weekClasses.forEach(cls => {
             const st = new Date(cls.start_time);
@@ -120,7 +118,7 @@
         %>
         <div
           class="wg-event <%= isFull ? 'wg-event--full' : '' %>"
-          style="top:<%= topPct.toFixed(3) %>%;height:<%= heightPct.toFixed(3) %>%;left:calc(<%= leftPct.toFixed(3) %>% + 4px);width:calc(<%= widthPct.toFixed(3) %>% - 8px);background:<%= color %>;"
+          <%- `style="top:${topPct.toFixed(3)}%;height:${heightPct.toFixed(3)}%;left:calc(${leftPct.toFixed(3)}% + 4px);width:calc(${widthPct.toFixed(3)}% - 8px);background:${color};"` %>
           data-id="<%= cls.id %>"
           data-name="<%= cls.name %>"
           data-time="<%= timeStr %> – <%= endStr %>"
@@ -139,6 +137,8 @@
           <span class="wg-event-time"><%= timeStr %> – <%= endStr %></span>
         </div>
         <% }); %>
+      </div>
+
       </div>
     </div>
   </div>
@@ -247,7 +247,7 @@
   const modalDesc    = document.getElementById('modalDesc');
   const modalSpots   = document.getElementById('modalSpots');
   const modalActions = document.getElementById('modalActions');
-  const isLoggedIn   = <%= typeof user !== 'undefined' && user ? 'true' : 'false' %>;
+  const isLoggedIn   = ('<%= typeof user !== "undefined" && user ? "true" : "false" %>' === 'true');
 
   function openModal(el) {
     const d = el.dataset;

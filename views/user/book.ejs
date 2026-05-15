@@ -190,7 +190,7 @@
 
                               <p class="booking-terms">
                                 Po zapisaniu otrzymasz potwierdzenie e-mailem.
-                                Możesz odwołać zapis do 2 godzin przed zajęciami.
+                                Możesz odwołać zapis do 2h przed zajęciami.
                               </p>
                             </form>
                             <% } %>
@@ -203,10 +203,18 @@
 
     <%- include('../partials/footer') %>
 
+      <script id="page-data" type="application/json">
+        {
+          "isDualClass": <%= typeof classData !== 'undefined' && classData ? (classData.class_type === 'adult_and_child' ? 'true' : 'false') : 'false' %>,
+          "maxAdultSpots": <%= typeof adultSpotsLeft !== 'undefined' ? adultSpotsLeft : 1 %>,
+          "maxChildSpots": <%= typeof childSpotsLeft !== 'undefined' ? childSpotsLeft : 0 %>
+        }
+      </script>
       <script>
-        const IS_DUAL_CLASS = <%= typeof classData !== 'undefined' && classData ? (classData.class_type === 'adult_and_child' ? 'true' : 'false') : 'false' %>;
-        const MAX_ADULT_SPOTS = <%= typeof adultSpotsLeft !== 'undefined' ? adultSpotsLeft : 1 %>;
-        const MAX_CHILD_SPOTS = <%= typeof childSpotsLeft !== 'undefined' ? childSpotsLeft : 0 %>;
+        const _pageData = JSON.parse(document.getElementById('page-data').textContent);
+        const IS_DUAL_CLASS = _pageData.isDualClass;
+        const MAX_ADULT_SPOTS = _pageData.maxAdultSpots;
+        const MAX_CHILD_SPOTS = _pageData.maxChildSpots;
         let extraCount = 0;
 
         const addBtn = document.getElementById('addPersonBtn');
