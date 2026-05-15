@@ -9,17 +9,10 @@
       <p>Kliknij na zajęcia, aby zobaczyć szczegóły i zapisać się.</p>
     </div>
 
-    <!-- Awaryjny kontakt e-mail -->
-    <div class="emergency-contact-bar">
-      <span class="emergency-icon">📧</span>
-      <span>Problemy z systemem? Zapisz się bezpośrednio przez e-mail:</span>
-      <a href="mailto:wspinanie.ue@gmail.com" class="emergency-link">wspinanie.ue@gmail.com</a>
-    </div>
-
     <!-- Nawigacja tygodniowa -->
-    <div class="week-nav" style="margin-bottom:1.5rem;">
+    <div class="kcal-week-nav">
       <a href="/calendar?week=<%= weekOffset - 1 %>" class="btn btn--outline btn--sm">← Poprzedni tydzień</a>
-      <span class="week-nav-label">
+      <span class="kcal-week-label">
         <%= weekStart.toLocaleDateString('pl-PL', { day: 'numeric', month: 'long' }) %> –
         <%= weekEnd.toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' }) %>
       </span>
@@ -112,23 +105,22 @@
 
     <!-- ========== WEEKLY GRID ========== -->
     <div class="kcal-wrapper">
-      <!-- Header row: gutter + 7 days -->
-      <div class="kcal-header">
-        <div class="kcal-gutter-hd"></div>
-        <% for (let d = 0; d < 7; d++) {
-          const day = new Date(weekStart);
-          day.setDate(weekStart.getDate() + d);
-          const isToday = day.toDateString() === new Date().toDateString();
-        %>
-        <div class="kcal-day-hd <%= isToday ? 'kcal-day-hd--today' : '' %>">
-          <span class="kcal-day-name"><%= day.toLocaleDateString('pl-PL', { weekday: 'short' }) %></span>
-          <span class="kcal-day-num <%= isToday ? 'kcal-day-num--today' : '' %>"><%= day.getDate() %></span>
-        </div>
-        <% } %>
-      </div>
-
-      <!-- Body: scrollable grid area -->
+      <!-- Scrollable area: headers + body together -->
       <div class="kcal-scroll">
+        <!-- Header row: gutter + 7 days -->
+        <div class="kcal-header">
+          <div class="kcal-gutter-hd"></div>
+          <% for (let d = 0; d < 7; d++) {
+            const day = new Date(weekStart);
+            day.setDate(weekStart.getDate() + d);
+            const isToday = day.toDateString() === new Date().toDateString();
+          %>
+          <div class="kcal-day-hd <%= isToday ? 'kcal-day-hd--today' : '' %>">
+            <span class="kcal-day-name"><%= day.toLocaleDateString('pl-PL', { weekday: 'short' }) %></span>
+            <span class="kcal-day-num <%= isToday ? 'kcal-day-num--today' : '' %>"><%= day.getDate() %></span>
+          </div>
+          <% } %>
+        </div>
         <div class="kcal-body" style="height:<%= gridHeight %>px;">
           <!-- Time gutter -->
           <div class="kcal-gutter">
@@ -209,6 +201,13 @@
       <p>🔑 <strong>Chcesz się zapisać?</strong> <a href="/login">Zaloguj się</a> — to zajmuje 30 sekund, potrzebujesz tylko e-maila.</p>
     </div>
     <% } %>
+
+    <!-- Awaryjny kontakt e-mail -->
+    <div class="emergency-contact-bar" style="margin-top:1.5rem;">
+      <span class="emergency-icon">📧</span>
+      <span>Problemy z systemem? Zapisz się bezpośrednio przez e-mail:</span>
+      <a href="mailto:wspinanie.ue@gmail.com" class="emergency-link">wspinanie.ue@gmail.com</a>
+    </div>
 
   </div>
 </div>

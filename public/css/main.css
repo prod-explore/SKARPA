@@ -1618,6 +1618,10 @@ h3 { font-size: clamp(1.1rem, 2.5vw, 1.4rem); }
   grid-template-columns: 56px repeat(7, 1fr);
   border-bottom: 2px solid var(--border-strong);
   background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  min-width: 640px;
 }
 .kcal-gutter-hd {
   border-right: 1px solid var(--border);
@@ -1804,14 +1808,38 @@ h3 { font-size: clamp(1.1rem, 2.5vw, 1.4rem); }
 /* ── Mobile: horizontal scroll ─────────────────────────── */
 @media (max-width: 768px) {
   .kcal-body { min-width: 580px; }
+  .kcal-header { min-width: 580px; }
   .kcal-ev-name { font-size: .72rem; }
   .kcal-ev-time { font-size: .6rem; }
   .kcal-ev-instr { font-size: .58rem; }
 }
 @media (max-width: 480px) {
-  .kcal-header { grid-template-columns: 44px repeat(7, 1fr); }
+  .kcal-header { grid-template-columns: 44px repeat(7, 1fr); min-width: 520px; }
   .kcal-body { grid-template-columns: 44px 1fr; min-width: 520px; }
   .kcal-gutter-label { font-size: .65rem; right: 4px; }
   .kcal-day-name { font-size: .6rem; }
   .kcal-day-num { font-size: 1rem; }
+}
+
+/* ── Week navigation bar ──────────────────────────────── */
+.kcal-week-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: nowrap;
+}
+.kcal-week-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--text);
+  text-align: center;
+  white-space: nowrap;
+}
+@media (max-width: 560px) {
+  .kcal-week-nav { gap: .5rem; }
+  .kcal-week-label { font-size: .88rem; }
+  .kcal-week-nav .btn { padding: 6px 10px; font-size: .82rem; }
 }
