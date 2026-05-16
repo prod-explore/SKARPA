@@ -68,7 +68,7 @@
             <th>#</th>
             <th>Imię i Nazwisko</th>
             <th>Kategoria</th>
-            <th>Wiek (dziecko)</th>
+            <th>Wiek</th>
             <th>Zapisał(a)</th>
             <th>Data zapisu</th>
             <th class="no-print">E-mail kontaktowy</th>
@@ -84,7 +84,10 @@
                   <%= p.age_category === 'child' ? '👦 Dziecko' : '🧑 Dorosły' %>
                 </span>
               </td>
-              <td><%= p.age_category === 'child' && p.child_age != null ? p.child_age + ' lat' : '—' %></td>
+              <td>
+                <% const age = p.child_age || p.age; %>
+                <%= age != null ? age + ' lat' : '—' %>
+              </td>
               <td><%= p.is_main ? '★ Sam/a' : 'Dołączony' %></td>
               <td><%= new Date(p.bookedAt).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) %></td>
               <td class="no-print"><a href="mailto:<%= p.bookerEmail %>"><%= p.bookerEmail %></a></td>
@@ -111,7 +114,9 @@
           <div class="booking-detail-participants">
             <% b.participants.forEach(p => { %>
               <span class="participant-chip">
-                <%= p.first_name %> <%= p.last_name %><% if (p.is_main) { %> ★<% } %><% if (p.age_category === 'child' && p.child_age != null) { %> (<%= p.child_age %> lat)<% } %>
+                <%= p.first_name %> <%= p.last_name %><% if (p.is_main) { %> ★<% } %>
+                <% const age = p.child_age || p.age; %>
+                <% if (age != null) { %> (<%= age %> lat)<% } %>
               </span>
             <% }); %>
           </div>

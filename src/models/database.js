@@ -356,15 +356,21 @@ const BookingModel = {
 
       for (let i = 0; i < participants.length; i++) {
         const ag = participants[i].age;
-        const ageVal = (ag !== undefined && ag !== null && ag !== '') ? parseInt(ag, 10) : null;
+        // Age can be a number (from calculated birth_date) or a string (from booking form)
+        let ageVal = null;
+        if (ag !== undefined && ag !== null && String(ag).trim() !== '') {
+          ageVal = parseInt(String(ag).trim(), 10);
+          if (isNaN(ageVal)) ageVal = null;
+        }
+
         insertParticipant.run(
           bookingId,
           participants[i].firstName,
           participants[i].lastName,
           participants[i].ageCategory || 'adult',
           participants[i].isMain ? 1 : 0,
-          ageVal, // kept for backward compatibility if needed
-          ageVal
+          ageVal, // child_age
+          ageVal  // age
         );
       }
 

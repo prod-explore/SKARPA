@@ -41,9 +41,58 @@
 
         <div class="form-group">
           <label for="birthDate" class="form-label">Data urodzenia *</label>
-          <input type="date" id="birthDate" name="birthDate" class="form-input" required max="<%= new Date().toISOString().split('T')[0] %>">
+          <div class="form-input-with-label">
+            <input type="date" id="birthDate" name="birthDate" class="form-input" required max="<%= new Date().toISOString().split('T')[0] %>">
+            <span id="ageDisplay" class="age-badge" style="display:none;"></span>
+          </div>
           <p class="auth-subtitle" style="margin-top: 0.5rem; font-size: 0.85rem;">Konto mogą utworzyć osoby w wieku minimum 13 lat.</p>
         </div>
+
+        <script>
+          const birthDateInput = document.getElementById('birthDate');
+          const ageDisplay = document.getElementById('ageDisplay');
+
+          birthDateInput.addEventListener('change', function() {
+            const birthDate = new Date(this.value);
+            if (isNaN(birthDate.getTime())) {
+              ageDisplay.style.display = 'none';
+              return;
+            }
+
+            const today = new Date();
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const m = today.getMonth() - birthDate.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+              age--;
+            }
+
+            if (age >= 0) {
+              ageDisplay.textContent = age + (age === 1 ? ' rok' : (age < 5 ? ' lata' : ' lat'));
+              ageDisplay.style.display = 'inline-flex';
+              ageDisplay.className = 'age-badge ' + (age >= 18 ? 'age-badge--adult' : 'age-badge--child');
+            } else {
+              ageDisplay.style.display = 'none';
+            }
+          });
+        </script>
+
+        <style>
+          .form-input-with-label {
+            position: relative;
+            display: flex;
+            align-items: center;
+          }
+          .age-badge {
+            margin-left: 10px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            white-space: nowrap;
+          }
+          .age-badge--adult { background: #e0f2fe; color: #0369a1; }
+          .age-badge--child { background: #fef3c7; color: #92400e; }
+        </style>
 
         <button type="submit" class="btn btn--primary btn--full btn--lg">
           Zapisz i przejdź dalej →

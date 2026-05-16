@@ -58,7 +58,11 @@
                 <tr>
                   <td>
                     <strong><%= u.first_name %> <%= u.last_name %></strong>
-                    <br><span class="badge badge--soon">👦 Niepełnoletni</span>
+                    <br>
+                    <span class="badge badge--soon">👦 Niepełnoletni</span>
+                    <% if (u.age != null) { %>
+                      <span class="badge badge--info"><%= u.age %> lat</span>
+                    <% } %>
                   </td>
                   <td><a href="mailto:<%= u.email %>"><%= u.email %></a></td>
                   <td><%= new Date(u.created_at).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short', year: 'numeric' }) %></td>
@@ -99,7 +103,12 @@
             <tbody>
               <% verifiedChildren.forEach(u => { %>
                 <tr>
-                  <td><strong><%= u.first_name %> <%= u.last_name %></strong></td>
+                  <td>
+                    <strong><%= u.first_name %> <%= u.last_name %></strong>
+                    <% if (u.age != null) { %>
+                      <span class="badge badge--info" style="margin-left: 5px;"><%= u.age %> lat</span>
+                    <% } %>
+                  </td>
                   <td><%= u.email %></td>
                   <td><span class="badge badge--active">Zweryfikowany</span></td>
                 </tr>

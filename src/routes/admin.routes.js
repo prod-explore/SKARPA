@@ -228,9 +228,29 @@ router.get('/admin/classes/:id/attendance', requireAdmin, (req, res) => {
 // GET /admin/consents — Zarządzanie zgodami
 // ============================================================
 router.get('/admin/consents', requireAdmin, (req, res) => {
-  const pendingUsers = UserModel.getPendingConsents();
+  const today = new Date();
+  
+  const calculateAge = (birthDate) => {
+    if (!birthDate) return null;
+    const bd = new Date(birthDate);
+    let age = today.getFullYear() - bd.getFullYear();
+    const m = today.getMonth() - bd.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < bd.getDate())) age--;
+    return age;
+  };
+
+  const pendingUsers = UserModel.getPendingConsents().map(u => ({
+    ...u,
+    age: calculateAge(u.birth_date)
+  }));
+  
   const allUsers = UserModel.getAllUsers();
-  const verifiedChildren = allUsers.filter(u => u.age_category === 'child' && u.is_verified);
+  const verifiedChildren = allUsers
+    .filter(u => u.age_category === 'child' && u.is_verified)
+    .map(u => ({
+      ...u,
+      age: calculateAge(u.birth_date)
+    }));
 
   res.render('admin/consents', {
     title: 'Zarządzanie zgodami',
