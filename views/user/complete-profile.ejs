@@ -94,6 +94,41 @@
           .age-badge--child { background: #fef3c7; color: #92400e; }
         </style>
 
+        <div class="auth-consents">
+          <div class="consent-group">
+            <label class="consent-checkbox">
+              <input type="checkbox" name="terms_accepted" required>
+              <span class="checkbox-custom"></span>
+              <span class="consent-text">
+                Akceptuję <a href="/terms" target="_blank">Regulamin</a> oraz <a href="/privacy" target="_blank">Politykę Prywatności</a>. *
+              </span>
+            </label>
+          </div>
+          <div class="consent-group">
+            <label class="consent-checkbox">
+              <input type="checkbox" name="marketing_accepted">
+              <span class="checkbox-custom"></span>
+              <span class="consent-text">
+                Chcę otrzymyciać informacje o nadchodzących terminach zajęć i nowościach (opcjonalne).
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <style>
+          .auth-consents { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 1rem; }
+          .consent-group { display: flex; align-items: flex-start; }
+          .consent-checkbox { display: flex; align-items: flex-start; gap: 12px; cursor: pointer; user-select: none; }
+          .consent-checkbox input { position: absolute; opacity: 0; cursor: pointer; height: 0; width: 0; }
+          .checkbox-custom { height: 20px; width: 20px; background-color: #eee; border-radius: 4px; flex-shrink: 0; position: relative; transition: all 0.2s; }
+          .consent-checkbox:hover input ~ .checkbox-custom { background-color: #ccc; }
+          .consent-checkbox input:checked ~ .checkbox-custom { background-color: #1a1d17; }
+          .checkbox-custom:after { content: ""; position: absolute; display: none; left: 7px; top: 3px; width: 6px; height: 10px; border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+          .consent-checkbox input:checked ~ .checkbox-custom:after { display: block; }
+          .consent-text { font-size: 0.85rem; color: #444; line-height: 1.4; }
+          .consent-text a { color: #1a1d17; font-weight: 600; text-decoration: underline; }
+        </style>
+
         <button type="submit" class="btn btn--primary btn--full btn--lg">
           Zapisz i przejdź dalej →
         </button>

@@ -42,7 +42,7 @@ function createSessionToken(user) {
       isAdmin: user.is_admin === 1
     },
     JWT_SECRET,
-    { expiresIn: '365d' } // Rok — passwordless UX
+    { expiresIn: '90d' } // 90 dni (3 miesiące)
   );
 }
 
@@ -121,7 +121,7 @@ function setAuthCookie(res, user) {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge: 365 * 24 * 60 * 60 * 1000 // 1 rok
+    maxAge: 90 * 24 * 60 * 60 * 1000 // 90 dni
   });
 }
 

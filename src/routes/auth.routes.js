@@ -146,7 +146,15 @@ router.get('/profile/complete', requireAuth, (req, res) => {
 // POST /profile/complete — Zapis danych profilu
 // ============================================================
 router.post('/profile/complete', requireAuth, (req, res) => {
-  const { firstName, lastName, birthDate, next: nextUrl } = req.body;
+  const { firstName, lastName, birthDate, terms_accepted, next: nextUrl } = req.body;
+  
+  if (!terms_accepted) {
+    return res.render('user/complete-profile', {
+      title: 'Uzupełnij profil',
+      next: nextUrl || '/dashboard',
+      error: 'Musisz zaakceptować regulamin i politykę prywatności.'
+    });
+  }
 
   if (!firstName?.trim() || !lastName?.trim() || !birthDate) {
     return res.render('user/complete-profile', {

@@ -1,0 +1,79 @@
+<%- include('../partials/head') %>
+
+<div class="legal-page">
+  <div class="container container--narrow">
+    <header class="legal-header">
+      <a href="/" class="legal-back">← Powrót do strony głównej</a>
+      <h1 class="legal-title">Regulamin Systemu</h1>
+      <p class="legal-updated">Ostatnia aktualizacja: <%= new Date().toLocaleDateString('pl-PL') %></p>
+    </header>
+
+    <div class="legal-content">
+      <section>
+        <h2>1. Postanowienia ogólne</h2>
+        <p>Niniejszy Regulamin określa zasady korzystania z systemu rezerwacji na darmowe zajęcia wspinaczkowe realizowane w ramach projektu "Fantastyczne Wspinanie".</p>
+        <p>Korzystanie z Systemu jest dobrowolne i bezpłatne.</p>
+      </section>
+
+      <section>
+        <h2>2. Rejestracja i logowanie</h2>
+        <ul>
+          <li>Dostęp do systemu odbywa się za pomocą adresu e-mail oraz tzw. "Magic Linku" przesyłanego na skrzynkę pocztową użytkownika.</li>
+          <li>System przeznaczony jest dla osób, które ukończyły <strong>13 rok życia</strong>. Osoby poniżej 18 roku życia muszą posiadać zgodę rodzica lub opiekuna prawnego.</li>
+          <li>Użytkownik jest zobowiązany do podania prawdziwych danych w profilu (imię, nazwisko, data urodzenia).</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>3. Zasady rezerwacji zajęć</h2>
+        <ul>
+          <li>Rezerwacja miejsca na zajęcia odbywa się poprzez System.</li>
+          <li>Użytkownik może zapisać siebie oraz do 4 dodatkowych osób (w zależności od dostępności miejsc).</li>
+          <li>W przypadku zajęć dla dzieci i dorosłych (kategoria "mixed"), dorosły opiekun zapisujący dziecko musi również zapisać siebie jako uczestnika.</li>
+          <li>Liczba miejsc na zajęcia jest ograniczona. Decyduje kolejność zgłoszeń.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>4. Rezygnacja i odwoływanie zajęć</h2>
+        <ul>
+          <li>Użytkownik ma prawo do odwołania rezerwacji za pośrednictwem Systemu.</li>
+          <li><strong>Odwołanie rezerwacji jest możliwe najpóźniej na 2 godziny przed planowanym rozpoczęciem zajęć.</strong></li>
+          <li>Administrator zastrzega sobie prawo do odwołania zajęć z przyczyn technicznych lub losowych. Użytkownicy zostaną o tym powiadomieni drogą mailową.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>5. Bezpieczeństwo</h2>
+        <ul>
+          <li>Udział w zajęciach wspinaczkowych wiąże się z ryzykiem sportowym.</li>
+          <li>Każdy uczestnik (lub jego opiekun) zobowiązany jest do przestrzegania Regulaminu Obiektu Skarpa Bytom oraz instrukcji prowadzącego zajęcia.</li>
+          <li>Przed pierwszymi zajęciami wymagane może być podpisanie oświadczenia w wersji papierowej na recepcji obiektu.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>6. Postanowienia końcowe</h2>
+        <p>Administrator zastrzega sobie prawo do zmiany niniejszego Regulaminu. O zmianach użytkownicy zostaną poinformowani przy logowaniu do Systemu.</p>
+      </section>
+    </div>
+  </div>
+</div>
+
+<style>
+  .legal-page { padding: 4rem 1rem; background: #fafafa; min-height: 100vh; color: #1a1d17; line-height: 1.6; }
+  .container--narrow { max-width: 800px; margin: 0 auto; }
+  .legal-header { margin-bottom: 3rem; text-align: center; }
+  .legal-back { display: inline-block; margin-bottom: 1rem; color: #666; text-decoration: none; font-size: 0.9rem; }
+  .legal-back:hover { color: #1a1d17; }
+  .legal-title { font-family: 'Barlow Condensed', sans-serif; font-size: 3rem; font-weight: 800; text-transform: uppercase; margin-bottom: 0.5rem; }
+  .legal-updated { color: #888; font-size: 0.85rem; }
+  .legal-content section { margin-bottom: 2.5rem; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+  .legal-content h2 { font-family: 'Barlow Condensed', sans-serif; font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; }
+  .legal-content p { margin-bottom: 1rem; }
+  .legal-content ul { margin-bottom: 1rem; padding-left: 1.5rem; }
+  .legal-content li { margin-bottom: 0.5rem; }
+</style>
+
+</body>
+</html>

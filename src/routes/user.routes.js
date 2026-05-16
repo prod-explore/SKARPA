@@ -469,4 +469,29 @@ router.post('/cancel/:classId', requireAuth, (req, res) => {
   res.redirect('/dashboard?success=Zapis+odwołany');
 });
 
+// ============================================================
+// LEGAL PAGES (Public)
+// ============================================================
+
+router.get('/privacy', (req, res) => {
+  res.render('user/privacy', {
+    title: 'Polityka Prywatności',
+    user: req.user
+  });
+});
+
+router.get('/terms', (req, res) => {
+  res.render('user/terms', {
+    title: 'Regulamin',
+    user: req.user
+  });
+});
+
+router.get('/cookies', (req, res) => {
+  res.render('user/cookies', {
+    title: 'Polityka Cookies',
+    user: req.user
+  });
+});
+
 module.exports = router;

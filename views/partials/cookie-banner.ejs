@@ -1,0 +1,70 @@
+<div id="cookieBanner" class="cookie-banner" style="display: none;">
+  <div class="cookie-banner-content">
+    <div class="cookie-banner-text">
+      <p>Ta strona używa plików cookies w celu zapewnienia poprawnego działania systemu rezerwacji. Więcej informacji znajdziesz w <a href="/cookies">Polityce Cookies</a>.</p>
+    </div>
+    <div class="cookie-banner-actions">
+      <button id="acceptCookies" class="btn btn--primary btn--sm">Rozumiem</button>
+    </div>
+  </div>
+</div>
+
+<style>
+  .cookie-banner {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+    z-index: 1000;
+    background: #1a1d17;
+    color: white;
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.1);
+    backdrop-filter: blur(8px);
+  }
+  .cookie-banner-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .cookie-banner-text p {
+    font-size: 0.9rem;
+    margin: 0;
+    color: rgba(255,255,255,0.8);
+  }
+  .cookie-banner-text a {
+    color: white;
+    text-decoration: underline;
+    font-weight: 600;
+  }
+  @media (max-width: 768px) {
+    .cookie-banner-content { flex-direction: column; text-align: center; gap: 1rem; }
+    .cookie-banner { bottom: 10px; left: 10px; right: 10px; }
+  }
+</style>
+
+<script>
+  (function() {
+    const banner = document.getElementById('cookieBanner');
+    const acceptBtn = document.getElementById('acceptCookies');
+    
+    if (!localStorage.getItem('cookiesAccepted')) {
+      banner.style.display = 'block';
+    }
+    
+    acceptBtn.addEventListener('click', function() {
+      localStorage.setItem('cookiesAccepted', 'true');
+      banner.style.opacity = '0';
+      banner.style.transform = 'translateY(20px)';
+      banner.style.transition = 'all 0.4s ease';
+      setTimeout(() => {
+        banner.style.display = 'none';
+      }, 400);
+    });
+  })();
+</script>

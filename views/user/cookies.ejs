@@ -1,0 +1,52 @@
+<%- include('../partials/head') %>
+
+<div class="legal-page">
+  <div class="container container--narrow">
+    <header class="legal-header">
+      <a href="/" class="legal-back">← Powrót do strony głównej</a>
+      <h1 class="legal-title">Polityka Cookies</h1>
+      <p class="legal-updated">Ostatnia aktualizacja: <%= new Date().toLocaleDateString('pl-PL') %></p>
+    </header>
+
+    <div class="legal-content">
+      <section>
+        <h2>Co to są pliki Cookies?</h2>
+        <p>Ciasteczka (cookies) to małe pliki tekstowe przechowywane na Twoim urządzeniu (komputerze, telefonie, tablecie) podczas korzystania z naszej strony internetowej.</p>
+      </section>
+
+      <section>
+        <h2>Do czego używamy Cookies?</h2>
+        <p>Nasz system wykorzystuje pliki cookies wyłącznie w celach niezbędnych do poprawnego działania aplikacji:</p>
+        <ul>
+          <li><strong>Autentykacja:</strong> Plik <code>authToken</code> służy do identyfikacji zalogowanego użytkownika. Dzięki niemu nie musisz logować się ponownie przy każdym odświeżeniu strony.</li>
+          <li><strong>Bezpieczeństwo:</strong> Mechanizmy chroniące przed atakami typu CSRF mogą wykorzystywać ciasteczka do weryfikacji żądań.</li>
+          <li><strong>Preferencje:</strong> Zapamiętywanie wyboru dotyczącego akceptacji polityki cookies.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Jak zarządzać plikami Cookies?</h2>
+        <p>Większość przeglądarek internetowych domyślnie dopuszcza przechowywanie plików cookies. Możesz zmienić te ustawienia w swojej przeglądarce, aby blokować cookies lub otrzymywać powiadomienia o ich wysyłaniu.</p>
+        <p>Uwaga: Wyłączenie plików cookies niezbędnych (takich jak <code>authToken</code>) uniemożliwi poprawne zalogowanie się i korzystanie z systemu rezerwacji.</p>
+      </section>
+    </div>
+  </div>
+</div>
+
+<style>
+  .legal-page { padding: 4rem 1rem; background: #fafafa; min-height: 100vh; color: #1a1d17; line-height: 1.6; }
+  .container--narrow { max-width: 800px; margin: 0 auto; }
+  .legal-header { margin-bottom: 3rem; text-align: center; }
+  .legal-back { display: inline-block; margin-bottom: 1rem; color: #666; text-decoration: none; font-size: 0.9rem; }
+  .legal-back:hover { color: #1a1d17; }
+  .legal-title { font-family: 'Barlow Condensed', sans-serif; font-size: 3rem; font-weight: 800; text-transform: uppercase; margin-bottom: 0.5rem; }
+  .legal-updated { color: #888; font-size: 0.85rem; }
+  .legal-content section { margin-bottom: 2.5rem; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+  .legal-content h2 { font-family: 'Barlow Condensed', sans-serif; font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; }
+  .legal-content p { margin-bottom: 1rem; }
+  .legal-content ul { margin-bottom: 1rem; padding-left: 1.5rem; }
+  .legal-content li { margin-bottom: 0.5rem; }
+</style>
+
+</body>
+</html>

@@ -1,0 +1,87 @@
+<%- include('../partials/head') %>
+
+<div class="legal-page">
+  <div class="container container--narrow">
+    <header class="legal-header">
+      <a href="/" class="legal-back">← Powrót do strony głównej</a>
+      <h1 class="legal-title">Polityka Prywatności</h1>
+      <p class="legal-updated">Ostatnia aktualizacja: <%= new Date().toLocaleDateString('pl-PL') %></p>
+    </header>
+
+    <div class="legal-content">
+      <section>
+        <h2>1. Informacje ogólne</h2>
+        <p>Niniejsza Polityka Prywatności określa zasady przetwarzania i ochrony danych osobowych użytkowników korzystających z systemu rezerwacji zajęć wspinaczkowych (dalej: "System").</p>
+        <p>Administratorem danych osobowych jest <strong>Klub Sportowy Skarpa Bytom</strong> z siedzibą w Bytomiu (lub odpowiedni podmiot realizujący projekt "Fantastyczne Wspinanie").</p>
+      </section>
+
+      <section>
+        <h2>2. Jakie dane zbieramy?</h2>
+        <p>Przetwarzamy następujące dane osobowe przekazywane podczas rejestracji i uzupełniania profilu:</p>
+        <ul>
+          <li>Adres e-mail (służący do logowania za pomocą Magic Linku),</li>
+          <li>Imię i nazwisko,</li>
+          <li>Data urodzenia (w celu weryfikacji wieku i przypisania do odpowiedniej kategorii wiekowej: dorosły/dziecko),</li>
+          <li>Dane osób dodatkowych (jeśli zapisujesz inne osoby na zajęcia).</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>3. Cel przetwarzania danych</h2>
+        <p>Dane są przetwarzane w celu:</p>
+        <ul>
+          <li>Umożliwienia rejestracji i logowania do Systemu,</li>
+          <li>Zarządzania zapisami na zajęcia wspinaczkowe,</li>
+          <li>Komunikacji z użytkownikiem w sprawach dotyczących rezerwacji (np. potwierdzenie zapisu, odwołanie zajęć),</li>
+          <li>Wypełnienia obowiązków prawnych związanych z realizacją projektu dofinansowanego z funduszy UE.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>4. Podstawa prawna</h2>
+        <p>Dane przetwarzane są zgodnie z rozporządzeniem RODO, na podstawie:</p>
+        <ul>
+          <li>Zgody użytkownika (art. 6 ust. 1 lit. a RODO),</li>
+          <li>Niezbędności do wykonania umowy świadczenia usługi (art. 6 ust. 1 lit. b RODO),</li>
+          <li>Prawnie uzasadnionego interesu administratora (art. 6 ust. 1 lit. f RODO).</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>5. Prawa użytkownika</h2>
+        <p>Każdy użytkownik ma prawo do:</p>
+        <ul>
+          <li>Dostępu do swoich danych oraz otrzymania ich kopii,</li>
+          <li>Sprostowania (poprawienia) swoich danych,</li>
+          <li>Usunięcia danych ("prawo do bycia zapomnianym"),</li>
+          <li>Ograniczenia przetwarzania danych,</li>
+          <li>Wniesienia sprzeciwu wobec przetwarzania.</li>
+        </ul>
+        <p>W celu skorzystania ze swoich praw prosimy o kontakt pod adresem e-mail administratora.</p>
+      </section>
+
+      <section>
+        <h2>6. Kontakt</h2>
+        <p>W razie pytań dotyczących przetwarzania danych osobowych prosimy o kontakt osobisty w biurze Skarpa Bytom lub poprzez adres e-mail podany na stronie głównej.</p>
+      </section>
+    </div>
+  </div>
+</div>
+
+<style>
+  .legal-page { padding: 4rem 1rem; background: #fafafa; min-height: 100vh; color: #1a1d17; line-height: 1.6; }
+  .container--narrow { max-width: 800px; margin: 0 auto; }
+  .legal-header { margin-bottom: 3rem; text-align: center; }
+  .legal-back { display: inline-block; margin-bottom: 1rem; color: #666; text-decoration: none; font-size: 0.9rem; }
+  .legal-back:hover { color: #1a1d17; }
+  .legal-title { font-family: 'Barlow Condensed', sans-serif; font-size: 3rem; font-weight: 800; text-transform: uppercase; margin-bottom: 0.5rem; }
+  .legal-updated { color: #888; font-size: 0.85rem; }
+  .legal-content section { margin-bottom: 2.5rem; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+  .legal-content h2 { font-family: 'Barlow Condensed', sans-serif; font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; }
+  .legal-content p { margin-bottom: 1rem; }
+  .legal-content ul { margin-bottom: 1rem; padding-left: 1.5rem; }
+  .legal-content li { margin-bottom: 0.5rem; }
+</style>
+
+</body>
+</html>
