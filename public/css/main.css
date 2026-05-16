@@ -1846,9 +1846,10 @@ h3 { font-size: clamp(1.1rem, 2.5vw, 1.4rem); }
 
 /* --- FOOTER REFACTORED --- */
 .footer-main {
-  padding: 3rem 0 1rem 0;
-  background: var(--bg);
-  border-top: 1px solid var(--border);
+  padding: 5rem 0 2rem 0;
+  background: var(--primary-dark);
+  color: rgba(255,255,255,0.6);
+  border-top: 1px solid rgba(255,255,255,0.05);
 }
 .footer-inner {
   display: flex;
@@ -1859,61 +1860,77 @@ h3 { font-size: clamp(1.1rem, 2.5vw, 1.4rem); }
 .footer-col {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.8rem;
 }
 .footer-brand-wrapper {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 0.75rem;
+  margin-bottom: 1rem;
 }
 .footer-brand-name {
   font-family: 'Barlow Condensed', sans-serif;
   font-weight: 800;
-  color: var(--primary-dark);
-  font-size: 1.25rem;
+  color: #fff;
+  font-size: 1.4rem;
   margin: 0;
+  letter-spacing: 1px;
+  text-transform: uppercase;
 }
 .footer-desc {
-  font-size: 0.9rem;
-  color: var(--text-muted);
-  max-width: 280px;
+  font-size: 0.95rem;
+  color: rgba(255,255,255,0.5);
+  max-width: 300px;
+  line-height: 1.6;
 }
 .footer-col-title {
   font-family: 'Barlow Condensed', sans-serif;
-  font-size: 1.1rem;
-  color: var(--primary-dark);
-  margin-bottom: 0.5rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 .footer-link {
-  font-size: 0.9rem;
-  color: var(--text-muted);
-  transition: color 0.2s;
-}
-.footer-link:hover {
-  color: var(--primary);
+  font-size: 0.95rem;
+  color: rgba(255,255,255,0.6);
+  transition: all 0.2s;
   text-decoration: none;
 }
+.footer-link:hover {
+  color: var(--brand);
+  text-decoration: none;
+  transform: translateX(4px);
+}
 .footer-address {
-  font-size: 0.9rem;
-  color: var(--text-muted);
+  font-size: 0.95rem;
+  color: rgba(255,255,255,0.5);
   margin: 0;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 .footer-email {
-  font-size: 0.9rem;
-  color: var(--primary);
-  font-weight: 600;
+  font-size: 1rem;
+  color: var(--brand);
+  font-weight: 700;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(153, 194, 77, 0.2);
+  padding-bottom: 2px;
+  transition: all 0.2s;
+}
+.footer-email:hover {
+  color: #fff;
+  border-color: #fff;
 }
 .footer-bottom {
   text-align: center;
-  padding-top: 2.5rem;
-  margin-top: 2rem;
-  border-top: 1px solid var(--border);
+  padding-top: 3rem;
+  margin-top: 4rem;
+  border-top: 1px solid rgba(255,255,255,0.05);
 }
 .footer-copy {
   font-size: 0.85rem;
-  color: var(--text-light);
+  color: rgba(255,255,255,0.3);
   margin: 0;
 }
 
