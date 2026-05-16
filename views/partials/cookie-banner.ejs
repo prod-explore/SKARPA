@@ -1,64 +1,79 @@
-<div id="cookieBanner" class="cookie-banner" style="display: none;">
-  <div class="cookie-banner-content">
-    <div class="cookie-banner-text">
+<div id="fw-cookie-banner" class="fw-cookie-banner">
+  <div class="fw-cookie-banner-content">
+    <div class="fw-cookie-banner-text">
       <p>Ta strona używa plików cookies w celu zapewnienia poprawnego działania systemu rezerwacji. Więcej informacji znajdziesz w <a href="/cookies">Polityce Cookies</a>.</p>
     </div>
-    <div class="cookie-banner-actions">
-      <button id="acceptCookies" class="btn btn--primary btn--sm">Rozumiem</button>
+    <div class="fw-cookie-banner-actions">
+      <button id="fw-accept-cookies" class="btn btn--primary btn--sm">Rozumiem</button>
     </div>
   </div>
 </div>
 
 <style>
-  .cookie-banner {
+  .fw-cookie-banner {
     position: fixed;
-    bottom: 20px;
-    left: 20px;
-    right: 20px;
-    z-index: 1000;
+    bottom: 24px;
+    left: 24px;
+    right: 24px;
+    z-index: 999999; /* Bardzo wysoki z-index */
     background: #1a1d17;
     color: white;
-    padding: 1rem 1.5rem;
-    border-radius: 12px;
-    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3);
-    border: 1px solid rgba(255,255,255,0.1);
-    backdrop-filter: blur(8px);
+    padding: 1.25rem 1.75rem;
+    border-radius: 16px;
+    box-shadow: 0 20px 50px -10px rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,255,255,0.15);
+    backdrop-filter: blur(12px);
+    display: none; /* Domyślnie ukryty, pokazywany przez JS */
+    animation: fwFadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
   }
-  .cookie-banner-content {
+  
+  @keyframes fwFadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .fw-cookie-banner-content {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 1.5rem;
-    max-width: 1200px;
+    gap: 2rem;
+    max-width: 1100px;
     margin: 0 auto;
   }
-  .cookie-banner-text p {
-    font-size: 0.9rem;
+  
+  .fw-cookie-banner-text p {
+    font-size: 0.95rem;
     margin: 0;
-    color: rgba(255,255,255,0.8);
+    color: rgba(255,255,255,0.9);
+    line-height: 1.5;
   }
-  .cookie-banner-text a {
+  
+  .fw-cookie-banner-text a {
     color: white;
     text-decoration: underline;
-    font-weight: 600;
+    font-weight: 700;
   }
+  
   @media (max-width: 768px) {
-    .cookie-banner-content { flex-direction: column; text-align: center; gap: 1rem; }
-    .cookie-banner { bottom: 10px; left: 10px; right: 10px; }
+    .fw-cookie-banner { bottom: 12px; left: 12px; right: 12px; padding: 1.25rem; }
+    .fw-cookie-banner-content { flex-direction: column; text-align: center; gap: 1.25rem; }
   }
 </style>
 
 <script>
   (function() {
-    const banner = document.getElementById('cookieBanner');
-    const acceptBtn = document.getElementById('acceptCookies');
+    const BANNER_ID = 'fw-cookie-banner';
+    const KEY = 'fw_cookies_accepted_v1'; // Nowy klucz, aby wymusić pokazanie u wszystkich
     
-    if (!localStorage.getItem('cookiesAccepted')) {
+    const banner = document.getElementById(BANNER_ID);
+    const acceptBtn = document.getElementById('fw-accept-cookies');
+    
+    if (!localStorage.getItem(KEY)) {
       banner.style.display = 'block';
     }
     
     acceptBtn.addEventListener('click', function() {
-      localStorage.setItem('cookiesAccepted', 'true');
+      localStorage.setItem(KEY, 'true');
       banner.style.opacity = '0';
       banner.style.transform = 'translateY(20px)';
       banner.style.transition = 'all 0.4s ease';
