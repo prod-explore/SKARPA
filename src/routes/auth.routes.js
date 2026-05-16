@@ -146,7 +146,7 @@ router.get('/profile/complete', requireAuth, (req, res) => {
 // POST /profile/complete — Zapis danych profilu
 // ============================================================
 router.post('/profile/complete', requireAuth, (req, res) => {
-  const { firstName, lastName, birthDate, terms_accepted, next: nextUrl } = req.body;
+  const { firstName, lastName, birthDate, terms_accepted, marketing_accepted, next: nextUrl } = req.body;
   
   if (!terms_accepted) {
     return res.render('user/complete-profile', {
@@ -190,7 +190,7 @@ router.post('/profile/complete', requireAuth, (req, res) => {
 
   const ageCategory = age >= 18 ? 'adult' : 'child';
 
-  UserModel.updateProfile(req.user.id, firstName.trim(), lastName.trim(), ageCategory, birthDate);
+  UserModel.updateProfile(req.user.id, firstName.trim(), lastName.trim(), ageCategory, birthDate, marketing_accepted === 'on');
 
   // Odśwież dane w cookie
   const updatedUser = UserModel.findById(req.user.id);

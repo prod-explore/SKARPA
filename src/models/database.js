@@ -44,6 +44,7 @@ function initDatabase() {
       consent_requested  INTEGER DEFAULT 0,
       is_admin           INTEGER DEFAULT 0,
       birth_date         TEXT,
+      marketing_consent  INTEGER DEFAULT 0,
       created_at         DATETIME DEFAULT CURRENT_TIMESTAMP,
       last_login         DATETIME
     );
@@ -121,6 +122,7 @@ function initDatabase() {
     { table: 'users', column: 'is_verified',       sql: "ALTER TABLE users ADD COLUMN is_verified INTEGER DEFAULT 0" },
     { table: 'users', column: 'consent_requested', sql: "ALTER TABLE users ADD COLUMN consent_requested INTEGER DEFAULT 0" },
     { table: 'users', column: 'birth_date',        sql: "ALTER TABLE users ADD COLUMN birth_date TEXT" },
+    { table: 'users', column: 'marketing_consent', sql: "ALTER TABLE users ADD COLUMN marketing_consent INTEGER DEFAULT 0" },
     // classes
     { table: 'classes', column: 'class_type',       sql: "ALTER TABLE classes ADD COLUMN class_type TEXT DEFAULT 'adult_only'" },
     { table: 'classes', column: 'max_child_spots',  sql: "ALTER TABLE classes ADD COLUMN max_child_spots INTEGER DEFAULT 0" },
@@ -180,11 +182,12 @@ const UserModel = {
       'INSERT INTO users (email, first_name, last_name) VALUES (?, ?, ?)'
     ).run(email, firstName, lastName),
 
-  updateProfile: (id, firstName, lastName, ageCategory, birthDate) => {
+  updateProfile: (id, firstName, lastName, ageCategory, birthDate, marketingConsent) => {
     const isVerified = ageCategory === 'adult' ? 1 : 0;
+    const marketingVal = marketingConsent ? 1 : 0;
     getDb().prepare(
-      'UPDATE users SET first_name = ?, last_name = ?, age_category = ?, birth_date = ?, is_verified = ? WHERE id = ?'
-    ).run(firstName, lastName, ageCategory, birthDate, isVerified, id);
+      'UPDATE users SET first_name = ?, last_name = ?, age_category = ?, birth_date = ?, is_verified = ?, marketing_consent = ? WHERE id = ?'
+    ).run(firstName, lastName, ageCategory, birthDate, isVerified, marketingVal, id);
   },
 
   updateLastLogin: (id) =>

@@ -56,7 +56,7 @@ app.set('views', path.join(__dirname, '../views'));
 
 // Zmienne globalne dla wszystkich szablonów
 app.use((req, res, next) => {
-  res.locals.appName = 'Skarpa Bytom';
+  res.locals.appName = 'Fantastyczne Wspinanie';
   res.locals.currentYear = new Date().getFullYear();
   next();
 });
