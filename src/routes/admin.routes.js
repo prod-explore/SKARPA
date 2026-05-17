@@ -218,6 +218,15 @@ router.get('/admin/classes/:id/attendance', requireAdmin, (req, res) => {
     b.participants.map(p => ({ ...p, bookerEmail: b.email, bookedAt: b.created_at }))
   );
 
+  // Sort: adults ('adult') first, then children ('child')
+  allParticipants.sort((a, b) => {
+    if (a.age_category !== b.age_category) {
+      return a.age_category === 'adult' ? -1 : 1;
+    }
+    // secondary sort: booking date ascending
+    return new Date(a.bookedAt) - new Date(b.bookedAt);
+  });
+
   res.render('admin/attendance', {
     title: `Lista: ${classData.name}`,
     classData, bookings: bookingsWithParticipants, allParticipants, user: req.user
