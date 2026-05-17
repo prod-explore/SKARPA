@@ -1345,7 +1345,7 @@ h3 { font-size: clamp(1.1rem, 2.5vw, 1.4rem); }
   border: 2px solid var(--border-strong);
   border-radius: 3px;
 }
-.attendance-table .no-print {}
+
 
 .booking-detail-card {
   background: var(--bg-card);
