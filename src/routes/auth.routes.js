@@ -180,15 +180,15 @@ router.post('/profile/complete', requireAuth, (req, res) => {
     age--;
   }
 
-  if (age < 13) {
+  if (age < 16) {
     return res.render('user/complete-profile', {
       title: 'Uzupełnij profil',
       next: nextUrl || '/dashboard',
-      error: 'Konto można utworzyć jedynie dla osób w wieku 13+.'
+      error: 'Samodzielne konto mogą założyć osoby od 16 roku życia. Młodszych uczestników rejestrują rodzice ze swojego konta.'
     });
   }
 
-  const ageCategory = age >= 18 ? 'adult' : 'child';
+  const ageCategory = age >= 16 ? 'adult' : 'child';
 
   UserModel.updateProfile(req.user.id, firstName.trim(), lastName.trim(), ageCategory, birthDate, marketing_accepted === 'on');
 

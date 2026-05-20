@@ -1290,7 +1290,7 @@ h3 { font-size: clamp(1.1rem, 2.5vw, 1.4rem); }
 .admin-table .row--cancelled { opacity: 0.5; }
 .admin-table .row--past { background: #fafafa; }
 
-.admin-actions { display: flex; gap: 4px; flex-wrap: wrap; }
+.admin-actions { display: flex; gap: 6px; flex-wrap: nowrap; align-items: center; white-space: nowrap; }
 
 .badge-cat {
   display: inline-block;

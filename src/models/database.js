@@ -148,6 +148,32 @@ function initDatabase() {
     }
   }
 
+  // Migracja: Zaktualizuj kategorie wiekowe na podstawie birth_date dla nowej granicy (16 lat)
+  try {
+    const usersWithBD = db.prepare("SELECT id, birth_date FROM users WHERE birth_date IS NOT NULL").all();
+    const today = new Date();
+    const updateStmt = db.prepare("UPDATE users SET age_category = ? WHERE id = ?");
+    const verifyStmt = db.prepare("UPDATE users SET is_verified = 1 WHERE id = ?");
+    db.transaction(() => {
+      for (const u of usersWithBD) {
+        const bd = new Date(u.birth_date);
+        let age = today.getFullYear() - bd.getFullYear();
+        const m = today.getMonth() - bd.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < bd.getDate())) {
+          age--;
+        }
+        const newCat = age >= 16 ? 'adult' : 'child';
+        updateStmt.run(newCat, u.id);
+        if (age >= 18) {
+          verifyStmt.run(u.id);
+        }
+      }
+    })();
+    console.log("  ↳ Migracja: Zaktualizowano kategorie wiekowe i weryfikację użytkowników (próg 16 lat)");
+  } catch (e) {
+    console.error("Błąd podczas migracji kategorii wiekowych:", e);
+  }
+
   console.log('✅ Baza danych SQLite zainicjalizowana:', DB_PATH);
 
   // Usuń zajęcia starsze niż miesiąc przy każdym starcie serwera
@@ -183,7 +209,15 @@ const UserModel = {
     ).run(email, firstName, lastName),
 
   updateProfile: (id, firstName, lastName, ageCategory, birthDate, marketingConsent) => {
-    const isVerified = ageCategory === 'adult' ? 1 : 0;
+    // Użytkownicy pełnoletni (>= 18) są automatycznie zweryfikowani, młodsi potrzebują zgody admina
+    const bd = new Date(birthDate);
+    const today = new Date();
+    let age = today.getFullYear() - bd.getFullYear();
+    const m = today.getMonth() - bd.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < bd.getDate())) {
+      age--;
+    }
+    const isVerified = age >= 18 ? 1 : 0;
     const marketingVal = marketingConsent ? 1 : 0;
     getDb().prepare(
       'UPDATE users SET first_name = ?, last_name = ?, age_category = ?, birth_date = ?, is_verified = ?, marketing_consent = ? WHERE id = ?'
@@ -220,7 +254,7 @@ const UserModel = {
 
   getPendingConsents: () =>
     getDb().prepare(
-      "SELECT * FROM users WHERE age_category = 'child' AND consent_requested = 1 AND is_verified = 0 ORDER BY created_at DESC"
+      "SELECT * FROM users WHERE consent_requested = 1 AND is_verified = 0 ORDER BY created_at DESC"
     ).all(),
 
   getAllUsers: () =>

@@ -111,7 +111,14 @@ router.get('/calendar', (req, res) => {
 // POST /consent/request — Dziecko prosi o weryfikację zgody
 // ============================================================
 router.post('/consent/request', requireAuth, (req, res) => {
-  if (req.user.age_category !== 'child') {
+  const today = new Date();
+  const bd = new Date(req.user.birth_date);
+  let age = today.getFullYear() - bd.getFullYear();
+  const m = today.getMonth() - bd.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < bd.getDate())) {
+    age--;
+  }
+  if (age >= 18) {
     return res.redirect('/dashboard?error=Ta+akcja+dotyczy+tylko+osób+niepełnoletnich');
   }
   if (req.user.is_verified) {
@@ -177,8 +184,8 @@ router.get('/dashboard', requireAuth, requireProfile, (req, res) => {
 // GET /book/:classId — Formularz zapisu na zajęcia
 // ============================================================
 router.get('/book/:classId', requireAuth, requireProfile, (req, res) => {
-  // Niezweryfikowane dziecko nie może rezerwować
-  if (req.user.age_category === 'child' && !req.user.is_verified) {
+  // Niezweryfikowane konto niepełnoletniego nie może rezerwować
+  if (!req.user.is_verified) {
     return res.redirect('/dashboard?error=Twoje+konto+wymaga+weryfikacji+zgody+rodzica+przed+zapisami');
   }
 
@@ -254,8 +261,8 @@ router.get('/book/:classId', requireAuth, requireProfile, (req, res) => {
 // POST /book/:classId — Zapis na zajęcia (z uczestnikami)
 // ============================================================
 router.post('/book/:classId', requireAuth, requireProfile, apiLimiter, async (req, res) => {
-  // Niezweryfikowane dziecko nie może rezerwować
-  if (req.user.age_category === 'child' && !req.user.is_verified) {
+  // Niezweryfikowane konto niepełnoletniego nie może rezerwować
+  if (!req.user.is_verified) {
     return res.redirect('/dashboard?error=Konto+wymaga+weryfikacji');
   }
 
@@ -311,8 +318,8 @@ router.post('/book/:classId', requireAuth, requireProfile, apiLimiter, async (re
   let mainAgeCategory = req.user.age_category;
   if (classData.class_type === 'adult_only') {
     mainAgeCategory = 'adult'; // Wszyscy w adult_only zajmują miejsce adult
-    if (mainUserAge !== null && mainUserAge < 13) {
-      return renderBookError('Osoby poniżej 13 roku życia nie mogą brać udziału w tych zajęciach.');
+    if (mainUserAge !== null && mainUserAge < 16) {
+      return renderBookError('Osoby poniżej 16 roku życia nie mogą brać udziału w tych zajęciach.');
     }
   }
 
@@ -347,12 +354,12 @@ router.post('/book/:classId', requireAuth, requireProfile, apiLimiter, async (re
 
       let ac;
       if (classData.class_type === 'adult_only') {
-        if (ageVal < 13) {
-          return renderBookError(`Osoba dopisywana (${fn}) jest za młoda na te zajęcia (wymagane min. 13 lat).`);
+        if (ageVal < 16) {
+          return renderBookError(`Osoba dopisywana (${fn}) jest za młoda na te zajęcia (wymagane min. 16 lat).`);
         }
         ac = 'adult';
       } else {
-        ac = ageVal >= 18 ? 'adult' : 'child';
+        ac = ageVal >= 16 ? 'adult' : 'child';
       }
 
       participants.push({

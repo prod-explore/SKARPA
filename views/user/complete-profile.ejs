@@ -45,7 +45,7 @@
             <input type="date" id="birthDate" name="birthDate" class="form-input" required max="<%= new Date().toISOString().split('T')[0] %>">
             <span id="ageDisplay" class="age-badge" style="display:none;"></span>
           </div>
-          <p class="auth-subtitle" style="margin-top: 0.5rem; font-size: 0.85rem;">Konto mogą utworzyć osoby w wieku minimum 13 lat.</p>
+          <p class="auth-subtitle" style="margin-top: 0.5rem; font-size: 0.85rem;">Konto mogą utworzyć osoby w wieku minimum 16 lat. Młodsze dzieci rejestrują rodzice.</p>
         </div>
 
         <script>
@@ -56,6 +56,7 @@
             const birthDate = new Date(this.value);
             if (isNaN(birthDate.getTime())) {
               ageDisplay.style.display = 'none';
+              birthDateInput.setCustomValidity('');
               return;
             }
 
@@ -69,9 +70,15 @@
             if (age >= 0) {
               ageDisplay.textContent = age + (age === 1 ? ' rok' : (age < 5 ? ' lata' : ' lat'));
               ageDisplay.style.display = 'inline-flex';
-              ageDisplay.className = 'age-badge ' + (age >= 18 ? 'age-badge--adult' : 'age-badge--child');
+              ageDisplay.className = 'age-badge ' + (age >= 16 ? 'age-badge--adult' : 'age-badge--child');
+              if (age < 16) {
+                birthDateInput.setCustomValidity('Samodzielne konto mogą założyć osoby od 16 roku życia. Młodszych uczestników rejestrują rodzice ze swojego konta.');
+              } else {
+                birthDateInput.setCustomValidity('');
+              }
             } else {
               ageDisplay.style.display = 'none';
+              birthDateInput.setCustomValidity('');
             }
           });
         </script>

@@ -1,3 +1,16 @@
+<%
+  let isMinor = false;
+  if (user && user.birth_date) {
+    const bd = new Date(user.birth_date);
+    const today = new Date();
+    let age = today.getFullYear() - bd.getFullYear();
+    const m = today.getMonth() - bd.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < bd.getDate())) {
+      age--;
+    }
+    isMinor = age < 18;
+  }
+%>
 <%- include('../partials/head') %>
 <%- include('../partials/navbar', { user: user }) %>
 
@@ -9,17 +22,17 @@
       <div>
         <h1>Cześć, <%= user.first_name %>! 👋</h1>
         <p class="dashboard-email"><%= user.email %></p>
-        <% if (user.age_category === 'child') { %>
+        <% if (isMinor) { %>
           <span class="badge badge--info" style="margin-top:6px;display:inline-block;">👦 Konto niepełnoletniego</span>
         <% } %>
       </div>
-      <% if (user.is_verified || user.age_category === 'adult') { %>
+      <% if (user.is_verified) { %>
         <a href="/calendar" class="btn btn--primary">+ Zapisz się na zajęcia</a>
       <% } %>
     </div>
 
-    <!-- BLOKADA: Niezweryfikowane dziecko -->
-    <% if (user.age_category === 'child' && !user.is_verified) { %>
+    <!-- BLOKADA: Niezweryfikowane konto niepełnoletniego -->
+    <% if (!user.is_verified) { %>
       <div class="consent-block">
         <div class="consent-block-icon">🔒</div>
         <h2>Wymagana zgoda rodzica</h2>

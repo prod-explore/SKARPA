@@ -255,7 +255,10 @@ router.get('/admin/consents', requireAdmin, (req, res) => {
   
   const allUsers = UserModel.getAllUsers();
   const verifiedChildren = allUsers
-    .filter(u => u.age_category === 'child' && u.is_verified)
+    .filter(u => {
+      const age = calculateAge(u.birth_date);
+      return age !== null && age < 18 && u.is_verified;
+    })
     .map(u => ({
       ...u,
       age: calculateAge(u.birth_date)
