@@ -27,7 +27,7 @@
       <h1>Panel Administracyjny</h1>
       <div class="admin-topbar-actions">
         <form action="/admin/clone-week" method="POST" style="display:inline;"
-              onsubmit="return confirm('Czy na pewno chcesz sklonować wszystkie zajęcia z bieżącego tygodnia na następny tydzień?')">
+              data-confirm="Czy na pewno chcesz sklonować wszystkie zajęcia z bieżącego tygodnia na następny tydzień?">
           <button type="submit" class="btn btn--outline">📋 Klonuj tydzień → następny</button>
         </form>
         <a href="/admin/classes/new" class="btn btn--primary">+ Nowe zajęcia</a>
@@ -156,12 +156,12 @@
                     </a>
                     <% if (!cls.is_cancelled && !isPast) { %>
                     <form action="/admin/classes/<%= cls.id %>/cancel" method="POST" style="display:inline;"
-                          onsubmit="return confirm('Odwołać te zajęcia?')">
+                          data-confirm="Odwołać te zajęcia?">
                       <button type="submit" class="btn btn--warning btn--xs">⚠️ Odwołaj</button>
                     </form>
                     <% } %>
                     <form action="/admin/classes/<%= cls.id %>/delete" method="POST" style="display:inline;"
-                          onsubmit="return confirm('Usunąć te zajęcia? Tej operacji nie można cofnąć.')">
+                          data-confirm="Usunąć te zajęcia? Tej operacji nie można cofnąć.">
                       <button type="submit" class="btn btn--danger btn--xs">🗑</button>
                     </form>
                   </td>

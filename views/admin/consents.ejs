@@ -68,11 +68,11 @@
                   <td><%= new Date(u.created_at).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short', year: 'numeric' }) %></td>
                   <td class="admin-actions">
                     <form action="/admin/consents/<%= u.id %>/approve" method="POST" style="display:inline;"
-                          onsubmit="return confirm('Zatwierdzić zgodę dla tego dziecka? Będzie mogło samodzielnie rezerwować zajęcia.')">
+                          data-confirm="Zatwierdzić zgodę dla tego dziecka? Będzie mogło samodzielnie rezerwować zajęcia.">
                       <button type="submit" class="btn btn--primary btn--xs">✅ Zatwierdź</button>
                     </form>
                     <form action="/admin/consents/<%= u.id %>/reject" method="POST" style="display:inline;"
-                          onsubmit="return confirm('Odrzucić prośbę? Dziecko będzie mogło ponownie poprosić o weryfikację.')">
+                          data-confirm="Odrzucić prośbę? Dziecko będzie mogło ponownie poprosić o weryfikację.">
                       <button type="submit" class="btn btn--danger btn--xs">✕ Odrzuć</button>
                     </form>
                   </td>

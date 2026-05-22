@@ -101,7 +101,7 @@
               <td class="no-print"><a href="mailto:<%= p.bookerEmail %>"><%= p.bookerEmail %></a></td>
               <td class="no-print">
                 <form action="/admin/classes/<%= classData.id %>/participants/<%= p.id %>/remove" method="POST" style="display:inline;"
-                      onsubmit="return confirm('Czy na pewno chcesz wypisać <%= p.first_name %> <%= p.last_name %> z tych zajęć? Zostanie wysłane powiadomienie e-mail.')">
+                      data-confirm="Czy na pewno chcesz wypisać <%= p.first_name %> <%= p.last_name %> z tych zajęć? Zostanie wysłane powiadomienie e-mail.">
                   <button type="submit" class="btn btn--danger btn--sm" title="Wypisz uczestnika">✕ Usuń</button>
                 </form>
               </td>
@@ -131,7 +131,7 @@
                 <%= p.first_name %> <%= p.last_name %><% if (p.is_main) { %> ★<% } %>
                 <% const age = p.child_age || p.age; %>
                 <% if (age != null) { %> (<%= age %> lat)<% } %>
-                <form action="/admin/classes/<%= classData.id %>/participants/<%= p.id %>/remove" method="POST" style="display:inline;" onsubmit="return confirm('Czy na pewno chcesz wypisać tę osobę? Zostanie wysłane powiadomienie e-mail.')">
+                <form action="/admin/classes/<%= classData.id %>/participants/<%= p.id %>/remove" method="POST" style="display:inline;" data-confirm="Czy na pewno chcesz wypisać tę osobę? Zostanie wysłane powiadomienie e-mail.">
                   <button type="submit" style="background:none;border:none;color:var(--danger);cursor:pointer;margin-left:4px;padding:0;font-size:0.9em;" title="Wypisz uczestnika">✕</button>
                 </form>
               </span>
