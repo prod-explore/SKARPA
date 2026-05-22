@@ -10,6 +10,7 @@ const { ClassModel, BookingModel, UserModel } = require('../models/database');
 const { requireAuth, requireProfile } = require('../middleware/auth');
 const { sendMagicLink } = require('../services/emailService');
 const { apiLimiter } = require('../middleware/security');
+const { calculateAge } = require('../utils/age');
 
 /** Wiek dziecka przy zapisie (7–17 lat), wymagany dla każdego uczestnika z kategorią „dziecko”. */
 function parseChildAge(raw) {
@@ -111,14 +112,8 @@ router.get('/calendar', (req, res) => {
 // POST /consent/request — Dziecko prosi o weryfikację zgody
 // ============================================================
 router.post('/consent/request', requireAuth, (req, res) => {
-  const today = new Date();
-  const bd = new Date(req.user.birth_date);
-  let age = today.getFullYear() - bd.getFullYear();
-  const m = today.getMonth() - bd.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < bd.getDate())) {
-    age--;
-  }
-  if (age >= 18) {
+  const age = calculateAge(req.user.birth_date);
+  if (age === null || age >= 18) {
     return res.redirect('/dashboard?error=Ta+akcja+dotyczy+tylko+osób+niepełnoletnich');
   }
   if (req.user.is_verified) {
@@ -170,9 +165,13 @@ router.get('/dashboard', requireAuth, requireProfile, (req, res) => {
     })
     .map(c => ({ ...c, adult_taken: c.adult_taken || 0, child_taken: c.child_taken || 0 }));
 
+  const userAge = calculateAge(req.user.birth_date);
+  const isMinor = userAge !== null && userAge < 18;
+
   res.render('user/dashboard', {
     title: 'Mój panel',
     user: req.user,
+    isMinor,
     classes: classesWithStatus,
     bookings: bookingsWithParticipants,
     weekClasses, weekStart, weekEnd, weekOffset,
@@ -208,35 +207,12 @@ router.get('/book/:classId', requireAuth, requireProfile, (req, res) => {
     ? (classData.max_child_spots - (classData.child_taken || 0))
     : 0;
 
-  // Sprawdź, czy dla danego typu użytkownika są miejsca
-  // Sprawdź, czy dla danego typu użytkownika są miejsca
-  if (req.user.age_category === 'child') {
-    // Samodzielne zweryfikowane dziecko
-    if (classData.class_type !== 'adult_and_child') {
-      // Dla zajęć adult_only dziecko (13-17) bierze miejsce z puli dorosłych
-      if (adultSpotsLeft <= 0) {
-        return res.render('user/book', {
-          title: 'Zapis na zajęcia', classData, user: req.user,
-          error: 'Brak wolnych miejsc na te zajęcia.', notOpen: false, full: true
-        });
-      }
-    } else {
-      // Dla zajęć mixed bierze miejsce z puli dzieci
-      if (childSpotsLeft <= 0) {
-        return res.render('user/book', {
-          title: 'Zapis na zajęcia', classData, user: req.user,
-          error: 'Brak wolnych miejsc dla dzieci na te zajęcia.', notOpen: false, full: true
-        });
-      }
-    }
-  } else {
-    // Dorosły — potrzebuje miejsca w puli adult
-    if (adultSpotsLeft <= 0) {
-      return res.render('user/book', {
-        title: 'Zapis na zajęcia', classData, user: req.user,
-        error: 'Brak wolnych miejsc na te zajęcia.', notOpen: false, full: true
-      });
-    }
+  // Sprawdź, czy są wolne miejsca w puli dorosłych
+  if (adultSpotsLeft <= 0) {
+    return res.render('user/book', {
+      title: 'Zapis na zajęcia', classData, user: req.user,
+      error: 'Brak wolnych miejsc na te zajęcia.', notOpen: false, full: true
+    });
   }
 
   // Sprawdź czy użytkownik już zapisany
@@ -301,16 +277,7 @@ router.post('/book/:classId', requireAuth, requireProfile, apiLimiter, async (re
   };
 
   // Oblicz wiek głównego użytkownika
-  let mainUserAge = null;
-  if (req.user.birth_date) {
-    const bd = new Date(req.user.birth_date);
-    const today = new Date();
-    mainUserAge = today.getFullYear() - bd.getFullYear();
-    const m = today.getMonth() - bd.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < bd.getDate())) {
-      mainUserAge--;
-    }
-  }
+  const mainUserAge = calculateAge(req.user.birth_date);
 
   // Zbierz uczestników z podziałem na pule
   const participants = [];
@@ -474,6 +441,40 @@ router.post('/cancel/:classId', requireAuth, (req, res) => {
 
   BookingModel.cancelByUser(req.user.id, classData.id);
   res.redirect('/dashboard?success=Zapis+odwołany');
+});
+
+// ============================================================
+// POST /cancel/:classId/participants/:participantId — Odwołanie pojedynczego uczestnika
+// ============================================================
+router.post('/cancel/:classId/participants/:participantId', requireAuth, (req, res) => {
+  const { classId, participantId } = req.params;
+  const classData = ClassModel.getById(classId);
+
+  if (!classData) {
+    return res.redirect('/dashboard?error=Zajęcia+nie+istnieją');
+  }
+
+  // Nie pozwól odwołać zapisu na < 2 godziny przed
+  const classDate = new Date(classData.start_time);
+  const hoursLeft = (classDate - new Date()) / (1000 * 60 * 60);
+  if (hoursLeft < 2) {
+    return res.redirect('/dashboard?error=Nie+można+odwołać+zapisu+na+mniej+niż+2+godziny+przed+zajęciami');
+  }
+
+  const participant = BookingModel.getParticipantWithContext(participantId);
+  if (!participant || participant.class_id !== parseInt(classId) || participant.user_id !== req.user.id) {
+    return res.redirect('/dashboard?error=Nieprawidłowy+uczestnik');
+  }
+
+  const bookingId = participant.booking_id;
+  BookingModel.removeParticipant(participantId);
+
+  const remaining = BookingModel.countParticipantsByBooking(bookingId);
+  if (remaining === 0) {
+    BookingModel.deleteBooking(bookingId);
+  }
+
+  res.redirect(`/dashboard?success=Uczestnik+${encodeURIComponent(participant.first_name + ' ' + participant.last_name)}+został+wypisany`);
 });
 
 // ============================================================

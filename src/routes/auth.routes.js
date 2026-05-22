@@ -11,15 +11,22 @@ const { UserModel, MagicTokenModel } = require('../models/database');
 const { sendMagicLink } = require('../services/emailService');
 const { createMagicLink, setAuthCookie, requireAuth } = require('../middleware/auth');
 const { magicLinkLimiter } = require('../middleware/security');
+const { calculateAge } = require('../utils/age');
 
 // ============================================================
 // GET /login — Strona logowania
 // ============================================================
 router.get('/login', (req, res) => {
-  if (req.user) return res.redirect('/dashboard');
+  let nextUrl = req.query.next;
+  if (nextUrl && (!nextUrl.startsWith('/') || nextUrl.startsWith('//'))) {
+    nextUrl = '/dashboard';
+  }
+
+  if (req.user) return res.redirect(nextUrl || '/dashboard');
+  
   res.render('user/login', {
     title: 'Logowanie',
-    next: req.query.next || '/dashboard',
+    next: nextUrl || '/dashboard',
     error: req.query.error || null,
     success: req.query.success || null
   });
@@ -64,8 +71,14 @@ router.post('/auth/request', magicLinkLimiter, async (req, res) => {
     // Wygeneruj magic link
     const { magicLink } = createMagicLink(user.id);
 
+    // Utrzymaj parametr next w wygenerowanym linku (jeśli jest bezpieczny)
+    let finalMagicLink = magicLink;
+    if (nextUrl && nextUrl.startsWith('/') && !nextUrl.startsWith('//')) {
+      finalMagicLink += `&next=${encodeURIComponent(nextUrl)}`;
+    }
+
     // Wyślij e-mail
-    await sendMagicLink(normalizedEmail, magicLink, isNew);
+    await sendMagicLink(normalizedEmail, finalMagicLink, isNew);
 
     return res.render('user/login', {
       title: 'Logowanie',
@@ -88,7 +101,12 @@ router.post('/auth/request', magicLinkLimiter, async (req, res) => {
 // GET /auth/verify — Weryfikacja magic linku
 // ============================================================
 router.get('/auth/verify', async (req, res) => {
-  const { token, next: nextUrl } = req.query;
+  let { token, next: nextUrl } = req.query;
+
+  // Walidacja Open Redirect - upewnij się, że URL jest lokalną ścieżką
+  if (nextUrl && (!nextUrl.startsWith('/') || nextUrl.startsWith('//'))) {
+    nextUrl = '/dashboard';
+  }
 
   if (!token) {
     return res.redirect('/login?error=' + encodeURIComponent('Brak tokenu'));
@@ -146,7 +164,12 @@ router.get('/profile/complete', requireAuth, (req, res) => {
 // POST /profile/complete — Zapis danych profilu
 // ============================================================
 router.post('/profile/complete', requireAuth, (req, res) => {
-  const { firstName, lastName, birthDate, terms_accepted, marketing_accepted, next: nextUrl } = req.body;
+  let { firstName, lastName, birthDate, terms_accepted, marketing_accepted, next: nextUrl } = req.body;
+  
+  // Walidacja Open Redirect
+  if (nextUrl && (!nextUrl.startsWith('/') || nextUrl.startsWith('//'))) {
+    nextUrl = '/dashboard';
+  }
   
   if (!terms_accepted) {
     return res.render('user/complete-profile', {
@@ -173,14 +196,9 @@ router.post('/profile/complete', requireAuth, (req, res) => {
     });
   }
 
-  const today = new Date();
-  let age = today.getFullYear() - birthDateObj.getFullYear();
-  const m = today.getMonth() - birthDateObj.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < birthDateObj.getDate())) {
-    age--;
-  }
+  const age = calculateAge(birthDate);
 
-  if (age < 16) {
+  if (age === null || age < 16) {
     return res.render('user/complete-profile', {
       title: 'Uzupełnij profil',
       next: nextUrl || '/dashboard',
@@ -188,7 +206,8 @@ router.post('/profile/complete', requireAuth, (req, res) => {
     });
   }
 
-  const ageCategory = age >= 16 ? 'adult' : 'child';
+  // Od 16 lat w górę — zawsze kategoria 'adult' (pula miejsc dla dorosłych)
+  const ageCategory = 'adult';
 
   UserModel.updateProfile(req.user.id, firstName.trim(), lastName.trim(), ageCategory, birthDate, marketing_accepted === 'on');
 

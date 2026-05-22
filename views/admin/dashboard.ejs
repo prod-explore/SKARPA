@@ -25,7 +25,13 @@
   <main class="admin-main">
     <div class="admin-topbar">
       <h1>Panel Administracyjny</h1>
-      <a href="/admin/classes/new" class="btn btn--primary">+ Nowe zajęcia</a>
+      <div class="admin-topbar-actions">
+        <form action="/admin/clone-week" method="POST" style="display:inline;"
+              onsubmit="return confirm('Czy na pewno chcesz sklonować wszystkie zajęcia z bieżącego tygodnia na następny tydzień?')">
+          <button type="submit" class="btn btn--outline">📋 Klonuj tydzień → następny</button>
+        </form>
+        <a href="/admin/classes/new" class="btn btn--primary">+ Nowe zajęcia</a>
+      </div>
     </div>
 
     <% if (typeof success !== 'undefined' && success) { %>

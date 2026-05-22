@@ -34,6 +34,13 @@
       </div>
     </div>
 
+    <% if (typeof success !== 'undefined' && success) { %>
+      <div class="alert alert--success" style="margin-bottom:1rem;"><%= success %></div>
+    <% } %>
+    <% if (typeof error !== 'undefined' && error) { %>
+      <div class="alert alert--error" style="margin-bottom:1rem;"><%= error %></div>
+    <% } %>
+
     <div class="attendance-summary">
       <div class="att-stat">
         <span class="att-stat-num"><%= allParticipants.filter(p => p.age_category === 'adult').length %></span>
@@ -72,6 +79,7 @@
             <th>Zapisał(a)</th>
             <th>Data zapisu</th>
             <th class="no-print">E-mail kontaktowy</th>
+            <th class="no-print">Akcje</th>
           </tr>
         </thead>
         <tbody>
@@ -91,10 +99,16 @@
               <td><%= p.is_main ? '★ Sam/a' : 'Dołączony' %></td>
               <td><%= new Date(p.bookedAt).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) %></td>
               <td class="no-print"><a href="mailto:<%= p.bookerEmail %>"><%= p.bookerEmail %></a></td>
+              <td class="no-print">
+                <form action="/admin/classes/<%= classData.id %>/participants/<%= p.id %>/remove" method="POST" style="display:inline;"
+                      onsubmit="return confirm('Czy na pewno chcesz wypisać <%= p.first_name %> <%= p.last_name %> z tych zajęć? Zostanie wysłane powiadomienie e-mail.')">
+                  <button type="submit" class="btn btn--danger btn--sm" title="Wypisz uczestnika">✕ Usuń</button>
+                </form>
+              </td>
             </tr>
           <% }); %>
           <% if (allParticipants.length === 0) { %>
-            <tr><td colspan="7" style="text-align:center;color:#999;padding:2rem;">Brak zapisanych uczestników</td></tr>
+            <tr><td colspan="8" style="text-align:center;color:#999;padding:2rem;">Brak zapisanych uczestników</td></tr>
           <% } %>
         </tbody>
       </table>
@@ -117,6 +131,9 @@
                 <%= p.first_name %> <%= p.last_name %><% if (p.is_main) { %> ★<% } %>
                 <% const age = p.child_age || p.age; %>
                 <% if (age != null) { %> (<%= age %> lat)<% } %>
+                <form action="/admin/classes/<%= classData.id %>/participants/<%= p.id %>/remove" method="POST" style="display:inline;" onsubmit="return confirm('Czy na pewno chcesz wypisać tę osobę? Zostanie wysłane powiadomienie e-mail.')">
+                  <button type="submit" style="background:none;border:none;color:var(--danger);cursor:pointer;margin-left:4px;padding:0;font-size:0.9em;" title="Wypisz uczestnika">✕</button>
+                </form>
               </span>
             <% }); %>
           </div>

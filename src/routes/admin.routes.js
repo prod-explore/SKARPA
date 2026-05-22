@@ -12,7 +12,8 @@ const validator = require('validator');
 const { ClassModel, BookingModel, UserModel, MagicTokenModel, getDb } = require('../models/database');
 const { requireAdmin, setAuthCookie, createMagicLink } = require('../middleware/auth');
 const { adminLoginLimiter } = require('../middleware/security');
-const { sendMagicLink } = require('../services/emailService');
+const { sendMagicLink, sendParticipantRemovedEmail } = require('../services/emailService');
+const { calculateAge } = require('../utils/age');
 
 const envAdmins = process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || 'explore.wrld.rld@gmail.com,wspinanie.ue@gmail.com';
 const ADMIN_EMAILS = envAdmins.split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
@@ -229,7 +230,9 @@ router.get('/admin/classes/:id/attendance', requireAdmin, (req, res) => {
 
   res.render('admin/attendance', {
     title: `Lista: ${classData.name}`,
-    classData, bookings: bookingsWithParticipants, allParticipants, user: req.user
+    classData, bookings: bookingsWithParticipants, allParticipants, user: req.user,
+    success: req.query.success || null,
+    error: req.query.error || null
   });
 });
 
@@ -237,17 +240,6 @@ router.get('/admin/classes/:id/attendance', requireAdmin, (req, res) => {
 // GET /admin/consents — Zarządzanie zgodami
 // ============================================================
 router.get('/admin/consents', requireAdmin, (req, res) => {
-  const today = new Date();
-  
-  const calculateAge = (birthDate) => {
-    if (!birthDate) return null;
-    const bd = new Date(birthDate);
-    let age = today.getFullYear() - bd.getFullYear();
-    const m = today.getMonth() - bd.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < bd.getDate())) age--;
-    return age;
-  };
-
   const pendingUsers = UserModel.getPendingConsents().map(u => ({
     ...u,
     age: calculateAge(u.birth_date)
@@ -294,6 +286,114 @@ router.post('/admin/consents/:id/reject', requireAdmin, (req, res) => {
 
   UserModel.rejectConsent(targetUser.id);
   res.redirect('/admin/consents?success=Prośba+odrzucona');
+});
+
+// ============================================================
+// POST /admin/classes/:classId/participants/:participantId/remove — Usuń uczestnika
+// ============================================================
+router.post('/admin/classes/:classId/participants/:participantId/remove', requireAdmin, async (req, res) => {
+  const { classId, participantId } = req.params;
+  const classData = ClassModel.getById(classId);
+  if (!classData) return res.redirect('/admin?error=Nie+znaleziono+zajęć');
+
+  const participant = BookingModel.getParticipantWithContext(participantId);
+  if (!participant || participant.class_id !== parseInt(classId)) {
+    return res.redirect(`/admin/classes/${classId}/attendance?error=Nie+znaleziono+uczestnika`);
+  }
+
+  const participantName = `${participant.first_name} ${participant.last_name}`;
+  const bookerEmail = participant.booker_email;
+  const bookingId = participant.booking_id;
+
+  // Usuń uczestnika
+  BookingModel.removeParticipant(participantId);
+
+  // Jeśli rezerwacja jest pusta — usuń ją
+  const remaining = BookingModel.countParticipantsByBooking(bookingId);
+  if (remaining === 0) {
+    BookingModel.deleteBooking(bookingId);
+  }
+
+  // Wyślij e-mail do osoby zapisującej
+  try {
+    const date = new Date(classData.start_time);
+    const classDateStr = date.toLocaleDateString('pl-PL', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+    await sendParticipantRemovedEmail(bookerEmail, participantName, classData.name, classDateStr);
+  } catch (emailErr) {
+    console.error('Błąd wysyłki e-mail o wypisaniu:', emailErr);
+    // Nie blokujemy usunięcia, nawet jeśli e-mail nie poszedł
+  }
+
+  return res.redirect(`/admin/classes/${classId}/attendance?success=Usunięto+uczestnika:+${encodeURIComponent(participantName)}`);
+});
+
+// ============================================================
+// POST /admin/clone-week — Klonuj zajęcia bieżącego tygodnia na następny
+// ============================================================
+router.post('/admin/clone-week', requireAdmin, (req, res) => {
+  // Oblicz granice bieżącego tygodnia (poniedziałek 00:00 — niedziela 23:59)
+  const now = new Date();
+  const dayOfWeek = now.getDay(); // 0=niedziela, 1=poniedziałek...
+  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() + mondayOffset);
+  weekStart.setHours(0, 0, 0, 0);
+
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 7); // Następny poniedziałek 00:00
+
+  const tzOffsetStart = weekStart.getTimezoneOffset() * 60000;
+  const weekStartStr = (new Date(weekStart.getTime() - tzOffsetStart)).toISOString().slice(0, 16); // YYYY-MM-DDThh:mm
+
+  const tzOffsetEnd = weekEnd.getTimezoneOffset() * 60000;
+  const weekEndStr = (new Date(weekEnd.getTime() - tzOffsetEnd)).toISOString().slice(0, 16);
+
+  const thisWeekClasses = ClassModel.getByWeek(weekStartStr, weekEndStr);
+
+  if (thisWeekClasses.length === 0) {
+    return res.redirect('/admin?error=Brak+zajęć+w+bieżącym+tygodniu+do+sklonowania');
+  }
+
+  let clonedCount = 0;
+  for (const c of thisWeekClasses) {
+    // Parse start_time and add 7 days in local time
+    const originalStart = new Date(c.start_time);
+    originalStart.setDate(originalStart.getDate() + 7);
+    
+    // Format back to YYYY-MM-DDThh:mm in local time
+    const tzOff = originalStart.getTimezoneOffset() * 60000;
+    const newStartLocal = (new Date(originalStart.getTime() - tzOff)).toISOString().slice(0, 16);
+
+    // Sprawdź duplikat
+    if (ClassModel.existsByNameAndTime(c.name, newStartLocal)) {
+      continue; // Pomiń — już istnieje
+    }
+
+    ClassModel.create({
+      name: c.name,
+      description: c.description || '',
+      startTime: newStartLocal,
+      durationMin: c.duration_min,
+      classType: c.class_type,
+      maxSpots: c.max_spots,
+      maxChildSpots: c.max_child_spots || 0,
+      instructor: c.instructor || '',
+      childInstructor: c.child_instructor || '',
+      category: c.category || 'adults',
+      color: c.color || '#6366f1'
+    });
+    clonedCount++;
+  }
+
+  if (clonedCount === 0) {
+    return res.redirect('/admin?info=Wszystkie+zajęcia+z+bieżącego+tygodnia+już+istnieją+w+następnym+tygodniu');
+  }
+
+  return res.redirect(`/admin?success=Sklonowano+${clonedCount}+zajęć+na+następny+tydzień`);
 });
 
 module.exports = router;

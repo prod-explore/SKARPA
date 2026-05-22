@@ -1964,3 +1964,20 @@ h3 { font-size: clamp(1.1rem, 2.5vw, 1.4rem); }
   color: var(--primary-dark);
   transform: translateY(-3px);
 }
+
+/* --- BUTTON MODIFIERS --- */
+.btn--danger {
+  background: #dc2626;
+  color: white;
+  border-color: #dc2626;
+}
+.btn--danger:hover {
+  background: #b91c1c;
+  color: white;
+  border-color: #b91c1c;
+}
+.btn--sm {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.85rem;
+  border-radius: 4px;
+}

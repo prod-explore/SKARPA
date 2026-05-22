@@ -8,6 +8,7 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
+const { calculateAge } = require('../utils/age');
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, '../../data/skarpa.db');
 
@@ -148,30 +149,30 @@ function initDatabase() {
     }
   }
 
-  // Migracja: Zaktualizuj kategorie wiekowe na podstawie birth_date dla nowej granicy (16 lat)
-  try {
-    const usersWithBD = db.prepare("SELECT id, birth_date FROM users WHERE birth_date IS NOT NULL").all();
-    const today = new Date();
-    const updateStmt = db.prepare("UPDATE users SET age_category = ? WHERE id = ?");
-    const verifyStmt = db.prepare("UPDATE users SET is_verified = 1 WHERE id = ?");
-    db.transaction(() => {
-      for (const u of usersWithBD) {
-        const bd = new Date(u.birth_date);
-        let age = today.getFullYear() - bd.getFullYear();
-        const m = today.getMonth() - bd.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < bd.getDate())) {
-          age--;
+  // Jednorazowa migracja: Zaktualizuj kategorie wiekowe (próg 16 lat)
+  db.exec('CREATE TABLE IF NOT EXISTS _migrations (name TEXT PRIMARY KEY)');
+  const alreadyRun = db.prepare("SELECT 1 FROM _migrations WHERE name = 'age_threshold_16'").get();
+  if (!alreadyRun) {
+    try {
+      const usersWithBD = db.prepare("SELECT id, birth_date FROM users WHERE birth_date IS NOT NULL").all();
+      const updateStmt = db.prepare("UPDATE users SET age_category = ? WHERE id = ?");
+      const verifyStmt = db.prepare("UPDATE users SET is_verified = 1 WHERE id = ?");
+      db.transaction(() => {
+        for (const u of usersWithBD) {
+          const age = calculateAge(u.birth_date);
+          if (age === null) continue;
+          const newCat = age >= 16 ? 'adult' : 'child';
+          updateStmt.run(newCat, u.id);
+          if (age >= 18) {
+            verifyStmt.run(u.id);
+          }
         }
-        const newCat = age >= 16 ? 'adult' : 'child';
-        updateStmt.run(newCat, u.id);
-        if (age >= 18) {
-          verifyStmt.run(u.id);
-        }
-      }
-    })();
-    console.log("  ↳ Migracja: Zaktualizowano kategorie wiekowe i weryfikację użytkowników (próg 16 lat)");
-  } catch (e) {
-    console.error("Błąd podczas migracji kategorii wiekowych:", e);
+        db.prepare("INSERT INTO _migrations (name) VALUES ('age_threshold_16')").run();
+      })();
+      console.log('  ↳ Migracja: Zaktualizowano kategorie wiekowe i weryfikację użytkowników (próg 16 lat)');
+    } catch (e) {
+      console.error('Błąd podczas migracji kategorii wiekowych:', e);
+    }
   }
 
   console.log('✅ Baza danych SQLite zainicjalizowana:', DB_PATH);
@@ -210,14 +211,8 @@ const UserModel = {
 
   updateProfile: (id, firstName, lastName, ageCategory, birthDate, marketingConsent) => {
     // Użytkownicy pełnoletni (>= 18) są automatycznie zweryfikowani, młodsi potrzebują zgody admina
-    const bd = new Date(birthDate);
-    const today = new Date();
-    let age = today.getFullYear() - bd.getFullYear();
-    const m = today.getMonth() - bd.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < bd.getDate())) {
-      age--;
-    }
-    const isVerified = age >= 18 ? 1 : 0;
+    const age = calculateAge(birthDate);
+    const isVerified = (age !== null && age >= 18) ? 1 : 0;
     const marketingVal = marketingConsent ? 1 : 0;
     getDb().prepare(
       'UPDATE users SET first_name = ?, last_name = ?, age_category = ?, birth_date = ?, is_verified = ?, marketing_consent = ? WHERE id = ?'
@@ -359,7 +354,19 @@ const ClassModel = {
       console.log(`  ↳ Czyszczenie: usunięto ${result.changes} starych zajęć (> 1 miesiąc).`);
     }
     return result.changes;
-  }
+  },
+
+  getByWeek: (weekStart, weekEnd) =>
+    getDb().prepare(`
+      SELECT * FROM classes
+      WHERE datetime(start_time) >= datetime(?) AND datetime(start_time) < datetime(?) AND is_cancelled = 0
+      ORDER BY datetime(start_time) ASC
+    `).all(weekStart, weekEnd),
+
+  existsByNameAndTime: (name, startTime) =>
+    !!getDb().prepare(
+      'SELECT 1 FROM classes WHERE name = ? AND start_time = ?'
+    ).get(name, startTime)
 };
 
 const BookingModel = {
@@ -442,7 +449,26 @@ const BookingModel = {
       JOIN classes c ON b.class_id = c.id
       WHERE b.user_id = ?
       ORDER BY c.start_time ASC
-    `).all(userId)
+    `).all(userId),
+
+  getParticipantWithContext: (participantId) =>
+    getDb().prepare(`
+      SELECT p.*, b.id as booking_id, b.user_id, b.class_id,
+             u.email as booker_email, u.first_name as booker_first, u.last_name as booker_last
+      FROM participants p
+      JOIN bookings b ON p.booking_id = b.id
+      JOIN users u ON b.user_id = u.id
+      WHERE p.id = ?
+    `).get(participantId),
+
+  removeParticipant: (participantId) =>
+    getDb().prepare('DELETE FROM participants WHERE id = ?').run(participantId),
+
+  countParticipantsByBooking: (bookingId) =>
+    getDb().prepare('SELECT COUNT(*) as cnt FROM participants WHERE booking_id = ?').get(bookingId).cnt,
+
+  deleteBooking: (bookingId) =>
+    getDb().prepare('DELETE FROM bookings WHERE id = ?').run(bookingId)
 };
 
 module.exports = { initDatabase, getDb, UserModel, MagicTokenModel, ClassModel, BookingModel };
