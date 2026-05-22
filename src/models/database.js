@@ -149,31 +149,7 @@ function initDatabase() {
     }
   }
 
-  // Jednorazowa migracja: Zaktualizuj kategorie wiekowe (próg 16 lat)
-  db.exec('CREATE TABLE IF NOT EXISTS _migrations (name TEXT PRIMARY KEY)');
-  const alreadyRun = db.prepare("SELECT 1 FROM _migrations WHERE name = 'age_threshold_16'").get();
-  if (!alreadyRun) {
-    try {
-      const usersWithBD = db.prepare("SELECT id, birth_date FROM users WHERE birth_date IS NOT NULL").all();
-      const updateStmt = db.prepare("UPDATE users SET age_category = ? WHERE id = ?");
-      const verifyStmt = db.prepare("UPDATE users SET is_verified = 1 WHERE id = ?");
-      db.transaction(() => {
-        for (const u of usersWithBD) {
-          const age = calculateAge(u.birth_date);
-          if (age === null) continue;
-          const newCat = age >= 16 ? 'adult' : 'child';
-          updateStmt.run(newCat, u.id);
-          if (age >= 18) {
-            verifyStmt.run(u.id);
-          }
-        }
-        db.prepare("INSERT INTO _migrations (name) VALUES ('age_threshold_16')").run();
-      })();
-      console.log('  ↳ Migracja: Zaktualizowano kategorie wiekowe i weryfikację użytkowników (próg 16 lat)');
-    } catch (e) {
-      console.error('Błąd podczas migracji kategorii wiekowych:', e);
-    }
-  }
+
 
   console.log('✅ Baza danych SQLite zainicjalizowana:', DB_PATH);
 
