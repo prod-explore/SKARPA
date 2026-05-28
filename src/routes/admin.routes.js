@@ -9,7 +9,7 @@ const express = require('express');
 const router = express.Router();
 const validator = require('validator');
 
-const { ClassModel, BookingModel, UserModel, MagicTokenModel, getDb } = require('../models/database');
+const { ClassModel, BookingModel, UserModel, MagicTokenModel, QrScanModel, getDb } = require('../models/database');
 const { requireAdmin, setAuthCookie, createMagicLink } = require('../middleware/auth');
 const { adminLoginLimiter } = require('../middleware/security');
 const { sendMagicLink, sendParticipantRemovedEmail } = require('../services/emailService');
@@ -101,11 +101,12 @@ router.get('/admin', requireAdmin, (req, res) => {
   const totalParticipants = classes.reduce((s, c) => s + (c.adult_taken || 0) + (c.child_taken || 0), 0);
   const upcomingCount = classes.filter(c => new Date(c.start_time) > new Date() && !c.is_cancelled).length;
   const pendingConsents = UserModel.getPendingConsents().length;
+  const qrScans = QrScanModel.getCount();
 
   res.render('admin/dashboard', {
     title: 'Panel Administracyjny',
     classes,
-    stats: { totalClasses, totalParticipants, upcomingCount },
+    stats: { totalClasses, totalParticipants, upcomingCount, qrScans },
     pendingConsents,
     user: req.user,
     success: req.query.success || null,

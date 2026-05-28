@@ -107,6 +107,14 @@ function initDatabase() {
       FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE
     );
 
+    -- Tabela skanów QR z ulotki
+    CREATE TABLE IF NOT EXISTS qr_scans (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      ip         TEXT,
+      user_agent TEXT,
+      scanned_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
     -- Indeksy dla wydajności
     CREATE INDEX IF NOT EXISTS idx_classes_start_time ON classes(start_time);
     CREATE INDEX IF NOT EXISTS idx_bookings_class_id  ON bookings(class_id);
@@ -447,4 +455,14 @@ const BookingModel = {
     getDb().prepare('DELETE FROM bookings WHERE id = ?').run(bookingId)
 };
 
-module.exports = { initDatabase, getDb, UserModel, MagicTokenModel, ClassModel, BookingModel };
+const QrScanModel = {
+  record: (ip, userAgent) =>
+    getDb().prepare(
+      'INSERT INTO qr_scans (ip, user_agent) VALUES (?, ?)'
+    ).run(ip || '', userAgent || ''),
+
+  getCount: () =>
+    getDb().prepare('SELECT COUNT(*) as cnt FROM qr_scans').get().cnt
+};
+
+module.exports = { initDatabase, getDb, UserModel, MagicTokenModel, ClassModel, BookingModel, QrScanModel };

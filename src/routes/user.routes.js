@@ -6,7 +6,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { ClassModel, BookingModel, UserModel } = require('../models/database');
+const { ClassModel, BookingModel, UserModel, QrScanModel } = require('../models/database');
 const { requireAuth, requireProfile } = require('../middleware/auth');
 const { sendMagicLink } = require('../services/emailService');
 const { apiLimiter } = require('../middleware/security');
@@ -500,6 +500,18 @@ router.get('/cookies', (req, res) => {
     title: 'Polityka Cookies',
     user: req.user
   });
+});
+
+// ============================================================
+// GET /qr — Link z kodu QR na ulotce (tracking wejść)
+// ============================================================
+router.get('/qr', (req, res) => {
+  try {
+    QrScanModel.record(req.ip, req.get('user-agent'));
+  } catch (e) {
+    console.error('Błąd zapisu skanu QR:', e);
+  }
+  res.redirect('/calendar');
 });
 
 module.exports = router;

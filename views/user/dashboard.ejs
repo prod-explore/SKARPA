@@ -180,9 +180,10 @@
                 const color = cls.color || '#4d5a3a';
                 const leftPct = (dayInWeek / 7) * 100;
                 const widthPct = (1 / 7) * 100;
+                const eventStyle = `top:${topPct.toFixed(3)}%;height:${heightPct.toFixed(3)}%;left:calc(${leftPct.toFixed(3)}% + 4px);width:calc(${widthPct.toFixed(3)}% - 8px);background:${color};`;
               %>
               <div class="wg-event <%= isFull?'wg-event--full':'' %>"
-                style="top:<%= topPct.toFixed(3) %>%;height:<%= heightPct.toFixed(3) %>%;left:calc(<%= leftPct.toFixed(3) %>% + 4px);width:calc(<%= widthPct.toFixed(3) %>% - 8px);background:<%= color %>;"
+                style="<%= eventStyle %>"
                 data-id="<%= cls.id %>"
                 data-name="<%= cls.name %>"
                 data-time="<%= timeStr %> – <%= endStr %>"
