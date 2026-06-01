@@ -60,80 +60,179 @@
           <a href="/calendar" class="btn btn--outline btn--sm">Pełny kalendarz →</a>
         </div>
 
-        <div class="week-grid-wrapper">
-          <div class="week-grid">
-            <!-- Nagłówek dni -->
-            <div class="wg-time-col wg-header"></div>
-            <% for (let d=0; d < 7; d++) { const day=new Date(weekStart); day.setDate(weekStart.getDate() + d); const
-              isToday=day.toDateString()===new Date().toDateString(); %>
-              <div class="wg-day-header <%= isToday ? 'wg-day-header--today' : '' %>">
-                <span class="wg-day-name">
-                  <%= day.toLocaleDateString('pl-PL', { weekday: 'short' }) %>
-                </span>
-                <span class="wg-day-num <%= isToday ? 'wg-day-num--today' : '' %>">
-                  <%= day.getDate() %>
-                </span>
+        <%
+          /* ========== PRE-PROCESSING: group events by day, detect overlaps ========== */
+          const PX_PER_HOUR = 64;
+          const totalHours = END_HOUR - START_HOUR;
+
+          /* Build per-day arrays */
+          const dayEvents = [[], [], [], [], [], [], []];
+
+          weekClasses.forEach(cls => {
+            const st = new Date(cls.start_time);
+            const dayInWeek = Math.round(
+              (new Date(weekStart.toDateString()) - new Date(st.toDateString())) / 86400000
+            ) * -1;
+            if (dayInWeek < 0 || dayInWeek > 6) return;
+
+            const startMin = st.getHours() * 60 + st.getMinutes();
+            const endMin   = startMin + (cls.duration_min || 60);
+            const offsetMin = startMin - START_HOUR * 60;
+            if (offsetMin < 0) return;
+
+            const et = new Date(st.getTime() + (cls.duration_min || 60) * 60000);
+            const timeStr = st.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
+            const endStr  = et.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
+
+            const adultLeft = cls.max_spots - (cls.adult_taken || 0);
+            const childLeft = cls.class_type === 'adult_and_child'
+              ? (cls.max_child_spots - (cls.child_taken || 0)) : 0;
+
+            dayEvents[dayInWeek].push({
+              id:               cls.id,
+              name:             cls.name,
+              instructor:       cls.instructor || '',
+              child_instructor: cls.child_instructor || '',
+              description:      cls.description || '',
+              class_type:       cls.class_type,
+              is_cancelled:     cls.is_cancelled,
+              max_spots:        cls.max_spots,
+              max_child_spots:  cls.max_child_spots,
+              duration_min:     cls.duration_min || 60,
+              color:            cls.color || '#6366f1',
+              startMin, endMin, offsetMin, timeStr, endStr,
+              adultLeft, childLeft,
+              isFull: adultLeft <= 0,
+              col: 0,
+              totalCols: 1
+            });
+          });
+
+          /* Overlap detection: greedy column assignment per day */
+          dayEvents.forEach(events => {
+            events.sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin);
+
+            const columns = []; /* columns[c] = [events...] */
+            events.forEach(ev => {
+              let placed = false;
+              for (let c = 0; c < columns.length; c++) {
+                const last = columns[c][columns[c].length - 1];
+                if (last.endMin <= ev.startMin) {
+                  columns[c].push(ev);
+                  ev.col = c;
+                  placed = true;
+                  break;
+                }
+              }
+              if (!placed) {
+                ev.col = columns.length;
+                columns.push([ev]);
+              }
+            });
+
+            /* Compute totalCols per overlap cluster */
+            events.forEach(ev => {
+              let maxCol = ev.col;
+              events.forEach(other => {
+                if (other.startMin < ev.endMin && other.endMin > ev.startMin) {
+                  if (other.col > maxCol) maxCol = other.col;
+                }
+              });
+              ev.totalCols = maxCol + 1;
+            });
+          });
+        %>
+
+        <!-- ========== WEEKLY GRID ========== -->
+        <div class="kcal-wrapper">
+          <!-- Scrollable area: headers + body together -->
+          <div class="kcal-scroll">
+            <!-- Header row: gutter + 7 days -->
+            <div class="kcal-header">
+              <div class="kcal-gutter-hd"></div>
+              <% for (let d = 0; d < 7; d++) {
+                const day = new Date(weekStart);
+                day.setDate(weekStart.getDate() + d);
+                const isToday = day.toDateString() === new Date().toDateString();
+              %>
+              <div class="kcal-day-hd <%= isToday ? 'kcal-day-hd--today' : '' %>">
+                <span class="kcal-day-name"><%= day.toLocaleDateString('pl-PL', { weekday: 'short' }) %></span>
+                <span class="kcal-day-num <%= isToday ? 'kcal-day-num--today' : '' %>"><%= day.getDate() %></span>
               </div>
               <% } %>
+            </div>
+            <div class="kcal-body" style="height:calc(var(--hh) * <%= totalHours %>);">
+              <!-- Time gutter -->
+              <div class="kcal-gutter">
+                <% for (let h = START_HOUR; h < END_HOUR; h++) { %>
+                <div class="kcal-gutter-label" style="top:calc(var(--hh) * <%= h - START_HOUR %>);">
+                  <%= String(h).padStart(2, '0') %>:00
+                </div>
+                <% } %>
+              </div>
 
-                <!-- Wiersze godzinowe -->
-                <% const _SH=START_HOUR, _EH=END_HOUR, _SM=SLOT_MIN; const _totalSlots=(_EH - _SH) * 60 / _SM; %>
-                  <% for (let s=0; s < _totalSlots; s++) { const _totalMin=_SH * 60 + s * _SM; const
-                    _hh=String(Math.floor(_totalMin / 60)).padStart(2, '0' ); const _mm=String(_totalMin %
-                    60).padStart(2, '0' ); const _isHour=_totalMin % 60===0; %>
-                    <div class="wg-time-label <%= _isHour ? '' : 'wg-time-label--half' %>">
-                      <%= _isHour ? _hh + ':' + _mm : '' %>
-                    </div>
-                    <% for (let d=0; d < 7; d++) { %>
-                      <div class="wg-cell <%= _isHour ? 'wg-cell--hour' : '' %>"></div>
-                      <% } %>
-                        <% } %>
-                          <!-- Overlay zajęć -->
-                          <div class="wg-events-layer" aria-label="Zajęcia">
-                            <% weekClasses.forEach(cls=> {
-                              const st = new Date(cls.start_time);
-                              const dayInWeek = Math.round((new Date(weekStart.toDateString()) - new
-                              Date(st.toDateString())) / 86400000) * -1;
-                              if (dayInWeek < 0 || dayInWeek> 6) return;
+              <!-- 7 day columns -->
+              <div class="kcal-cols">
+                <% for (let d = 0; d < 7; d++) {
+                  const day = new Date(weekStart);
+                  day.setDate(weekStart.getDate() + d);
+                  const isToday = day.toDateString() === new Date().toDateString();
+                %>
+                <div class="kcal-col <%= isToday ? 'kcal-col--today' : '' %>">
+                  <!-- Hour gridlines -->
+                  <% for (let h = 0; h <= totalHours; h++) { %>
+                  <div class="kcal-gridline" style="top:calc(var(--hh) * <%= h %>);"></div>
+                  <% } %>
+                  <!-- Half-hour gridlines -->
+                  <% for (let h = 0; h < totalHours; h++) { %>
+                  <div class="kcal-gridline kcal-gridline--half" style="top:calc(var(--hh) * <%= h %> + var(--hh) * 0.5);"></div>
+                  <% } %>
 
-                                const startMin = st.getHours() * 60 + st.getMinutes();
-                                const offsetFromStart = startMin - START_HOUR * 60;
-                                if (offsetFromStart < 0) return; const topPct=(offsetFromStart / ((END_HOUR -
-                                  START_HOUR) * 60)) * 100; const heightPct=(cls.duration_min / ((END_HOUR - START_HOUR)
-                                  * 60)) * 100; const adultLeft=cls.max_spots - (cls.adult_taken || 0); const
-                                  childLeft=cls.class_type==='adult_and_child' ? (cls.max_child_spots - (cls.child_taken
-                                  || 0)) : 0; const isFull=adultLeft <=0; const et=new Date(st.getTime() +
-                                  cls.duration_min * 60000); const timeStr=st.toLocaleTimeString('pl-PL',
-                                  {hour:'2-digit', minute:'2-digit'}); const endStr=et.toLocaleTimeString('pl-PL',
-                                  {hour:'2-digit', minute:'2-digit'}); const color=cls.color || '#6366f1' ; const
-                                  leftPct=(dayInWeek / 7) * 100; const widthPct=(1 / 7) * 100; %>
-                                  <div class="wg-event <%= isFull ? 'wg-event--full' : '' %>" <%-
-                                    `style="top:${topPct.toFixed(3)}%;height:${heightPct.toFixed(3)}%;left:calc(${leftPct.toFixed(3)}% + 4px);width:calc(${widthPct.toFixed(3)}% - 8px);background:${color};"
-                                    ` %>
-                                    data-id="<%= cls.id %>"
-                                      data-name="<%= cls.name %>"
-                                        data-time="<%= timeStr %> – <%= endStr %>"
-                                            data-instructor="<%= cls.instructor || '' %>"
-                                              data-child-instructor="<%= cls.child_instructor || '' %>"
-                                                data-description="<%= cls.description || '' %>"
-                                                  data-adult-left="<%= adultLeft %>"
-                                                    data-adult-max="<%= cls.max_spots %>"
-                                                      data-child-left="<%= childLeft %>"
-                                                        data-child-max="<%= cls.max_child_spots %>"
-                                                          data-type="<%= cls.class_type %>"
-                                                            data-cancelled="<%= cls.is_cancelled ? '1' : '0' %>"
-                                                              role="button" tabindex="0" aria-label="<%= cls.name %>"
-                                                                >
-                                                                <span class="wg-event-name">
-                                                                  <%= cls.name %>
-                                                                </span>
-                                                                <span class="wg-event-time">
-                                                                  <%= timeStr %> – <%= endStr %>
-                                                                </span>
-                                  </div>
-                                  <% }); %>
-                          </div>
-
+                  <!-- Events for this day -->
+                  <% dayEvents[d].forEach(ev => {
+                    const topMult    = (ev.offsetMin / 60);
+                    const heightMult = (ev.duration_min / 60);
+                    const colW     = 100 / ev.totalCols;
+                    const leftPct  = ev.col * colW;
+                  %>
+                  <div class="kcal-ev <%= ev.isFull ? 'kcal-ev--full' : '' %> <%= ev.is_cancelled ? 'kcal-ev--cancelled' : '' %>"
+                       style="
+                         top:calc(var(--hh) * <%= topMult.toFixed(4) %>);
+                         height:calc(var(--hh) * <%= heightMult.toFixed(4) %>);
+                         left:calc(<%= leftPct.toFixed(2) %>% + 2px);
+                         width:calc(<%= colW.toFixed(2) %>% - 4px);
+                         --ev-color:<%= ev.color %>;
+                       "
+                       data-id="<%= ev.id %>"
+                       data-name="<%= ev.name %>"
+                       data-time="<%= ev.timeStr %> – <%= ev.endStr %>"
+                       data-instructor="<%= ev.instructor %>"
+                       data-child-instructor="<%= ev.child_instructor %>"
+                       data-description="<%= ev.description %>"
+                       data-adult-left="<%= ev.adultLeft %>"
+                       data-adult-max="<%= ev.max_spots %>"
+                       data-child-left="<%= ev.childLeft %>"
+                       data-child-max="<%= ev.max_child_spots %>"
+                       data-type="<%= ev.class_type %>"
+                       data-cancelled="<%= ev.is_cancelled ? '1' : '0' %>"
+                       role="button" tabindex="0" aria-label="<%= ev.name %>"
+                  >
+                    <span class="kcal-ev-name"><%= ev.name %></span>
+                    <span class="kcal-ev-time"><%= ev.timeStr %> – <%= ev.endStr %></span>
+                    <% if (ev.instructor) { %>
+                    <span class="kcal-ev-instr"><%= ev.instructor %></span>
+                    <% } %>
+                    <% if (ev.isFull) { %>
+                    <span class="kcal-ev-badge">Brak miejsc</span>
+                    <% } else if (ev.is_cancelled) { %>
+                    <span class="kcal-ev-badge">Odwołane</span>
+                    <% } %>
+                  </div>
+                  <% }); %>
+                </div>
+                <% } %>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -250,7 +349,7 @@
           const isFull = adultLeft <= 0;
           const isMixed = d.type === 'adult_and_child';
 
-          modalAccent.style.background = el.style.background;
+          modalAccent.style.background = getComputedStyle(el).getPropertyValue('--ev-color');
           modalTitle.textContent = d.name;
           modalTime.textContent = d.time;
 
@@ -306,9 +405,9 @@
           document.body.style.overflow = '';
         }
 
-        document.querySelectorAll('.wg-event').forEach(el => {
+        document.querySelectorAll('.kcal-ev').forEach(el => {
           el.addEventListener('click', () => openModal(el));
-          el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') openModal(el); });
+          el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModal(el); } });
         });
 
         modalClose.addEventListener('click', closeModal);
