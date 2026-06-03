@@ -8,6 +8,7 @@
       <a href="/admin/classes/new" class="admin-nav-link">➕ Nowe zajęcia</a>
       <a href="/admin/consents" class="admin-nav-link">📋 Zgody</a>
       <a href="/calendar" class="admin-nav-link" target="_blank">📅 Kalendarz</a>
+      <a href="/admin/archive" class="admin-nav-link">🗄️ Archiwum</a>
     </nav>
     <div class="admin-sidebar-footer">
       <form action="/auth/logout" method="POST">
@@ -29,7 +30,8 @@
         <p class="admin-topbar-sub"><%= classData.name %> • <%= dateStr %> • <%= timeStr %></p>
       </div>
       <div class="admin-topbar-actions">
-        <button onclick="window.print()" class="btn btn--outline">🖨 Drukuj</button>
+        <button id="copyListBtn" class="btn btn--outline" title="Skopiuj listę jako tekst gotowy do wysłania">📋 Kopiuj tekst</button>
+        <button onclick="window.print()" class="btn btn--outline" title="Wydrukuj listę (ukrywa zbędne kolumny)">🖨 Drukuj</button>
         <a href="/admin" class="btn btn--outline">← Powrót</a>
       </div>
     </div>
@@ -76,8 +78,8 @@
             <th>Imię i Nazwisko</th>
             <th>Kategoria</th>
             <th>Wiek</th>
-            <th>Zapisał(a)</th>
-            <th>Data zapisu</th>
+            <th class="print-hide">Zapisał(a)</th>
+            <th class="print-hide">Data zapisu</th>
             <th class="no-print">E-mail kontaktowy</th>
             <th class="no-print">Akcje</th>
           </tr>
@@ -96,8 +98,8 @@
                 <% const age = p.child_age || p.age; %>
                 <%= age != null ? age + ' lat' : '—' %>
               </td>
-              <td><%= p.is_main ? '★ Sam/a' : 'Dołączony' %></td>
-              <td><%= new Date(p.bookedAt).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) %></td>
+              <td class="print-hide"><%= p.is_main ? '★ Sam/a' : 'Dołączony' %></td>
+              <td class="print-hide"><%= new Date(p.bookedAt).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) %></td>
               <td class="no-print"><a href="mailto:<%= p.bookerEmail %>"><%= p.bookerEmail %></a></td>
               <td class="no-print">
                 <form action="/admin/classes/<%= classData.id %>/participants/<%= p.id %>/remove" method="POST" style="display:inline;"
@@ -146,11 +148,40 @@
 
 <style>
 @media print {
-  .admin-sidebar, .admin-topbar-actions, .no-print { display: none !important; }
+  .admin-sidebar, .admin-topbar-actions, .no-print, .print-hide { display: none !important; }
   .admin-main { margin: 0; padding: 1rem; }
   .attendance-checkbox { display: inline-block; width: 18px; height: 18px; border: 2px solid #333; }
 }
 </style>
+
+<script>
+document.getElementById('copyListBtn')?.addEventListener('click', () => {
+  const participants = <%- JSON.stringify(allParticipants) %>;
+  const className = <%- JSON.stringify(classData.name) %>;
+  const dateStr = <%- JSON.stringify(dateStr) %>;
+  const timeStr = <%- JSON.stringify(timeStr) %>;
+  
+  let text = `Zajęcia: ${className}\nData: ${dateStr} ${timeStr}\n\nUczestnicy:\n`;
+  
+  if (participants.length === 0) {
+    text += "Brak zapisanych uczestników.";
+  } else {
+    participants.forEach((p, idx) => {
+      const age = p.child_age || p.age;
+      const ageStr = age ? ` (${age} lat)` : '';
+      const cat = p.age_category === 'child' ? 'Dziecko' : 'Dorosły';
+      text += `${idx + 1}. ${p.first_name} ${p.last_name} - ${cat}${ageStr}\n`;
+    });
+  }
+  
+  navigator.clipboard.writeText(text).then(() => {
+    alert("Lista skopiowana do schowka! Możesz ją teraz wkleić w wiadomości.");
+  }).catch(err => {
+    alert("Nie udało się skopiować automatycznie. Zaznacz tabelę ręcznie i skopiuj.");
+    console.error(err);
+  });
+});
+</script>
 
 <script src="/js/main.js"></script>
 </body>

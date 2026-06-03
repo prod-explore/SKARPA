@@ -142,6 +142,7 @@ function initDatabase() {
     { table: 'participants', column: 'age', sql: 'ALTER TABLE participants ADD COLUMN age INTEGER' },
     // classes
     { table: 'classes', column: 'color', sql: "ALTER TABLE classes ADD COLUMN color TEXT DEFAULT '#6366f1'" },
+    { table: 'classes', column: 'is_archived', sql: "ALTER TABLE classes ADD COLUMN is_archived INTEGER DEFAULT 0" },
   ];
 
   for (const m of migrations) {
@@ -161,12 +162,12 @@ function initDatabase() {
 
   console.log('✅ Baza danych SQLite zainicjalizowana:', DB_PATH);
 
-  // Usuń zajęcia starsze niż miesiąc przy każdym starcie serwera
-  const cleaned = db.prepare(
-    "DELETE FROM classes WHERE datetime(start_time) < datetime('now', '-1 month')"
+  // Automatycznie zarchiwizuj zajęcia, które już minęły (start + czas trwania)
+  const archived = db.prepare(
+    "UPDATE classes SET is_archived = 1 WHERE datetime(start_time, '+' || duration_min || ' minutes') < datetime('now', 'localtime') AND is_archived = 0"
   ).run();
-  if (cleaned.changes > 0) {
-    console.log(`  ↳ Czyszczenie: usunięto ${cleaned.changes} starych zajęć (> 1 miesiąc).`);
+  if (archived.changes > 0) {
+    console.log(`  ↳ Czyszczenie: zarchiwizowano automatycznie ${archived.changes} minionych zajęć.`);
   }
 
   return db;
@@ -277,7 +278,23 @@ const ClassModel = {
           JOIN bookings b2 ON p.booking_id = b2.id
           WHERE b2.class_id = c.id AND p.age_category = 'child') as child_taken
       FROM classes c
+      WHERE c.is_archived = 0
       ORDER BY c.start_time ASC
+    `).all(),
+
+  getArchived: () =>
+    getDb().prepare(`
+      SELECT c.*,
+        (SELECT COUNT(DISTINCT b.id) FROM bookings b WHERE b.class_id = c.id) as booking_count,
+        (SELECT COUNT(*) FROM participants p
+          JOIN bookings b2 ON p.booking_id = b2.id
+          WHERE b2.class_id = c.id AND p.age_category = 'adult') as adult_taken,
+        (SELECT COUNT(*) FROM participants p
+          JOIN bookings b2 ON p.booking_id = b2.id
+          WHERE b2.class_id = c.id AND p.age_category = 'child') as child_taken
+      FROM classes c
+      WHERE c.is_archived = 1
+      ORDER BY c.start_time DESC
     `).all(),
 
   getUpcoming: () =>
@@ -290,7 +307,7 @@ const ClassModel = {
           JOIN bookings b ON p.booking_id = b.id
           WHERE b.class_id = c.id AND p.age_category = 'child') as child_taken
       FROM classes c
-      WHERE c.start_time > CURRENT_TIMESTAMP AND c.is_cancelled = 0
+      WHERE c.start_time > CURRENT_TIMESTAMP AND c.is_cancelled = 0 AND c.is_archived = 0
       ORDER BY c.start_time ASC
     `).all(),
 
@@ -327,15 +344,21 @@ const ClassModel = {
   cancel: (id) =>
     getDb().prepare('UPDATE classes SET is_cancelled = 1 WHERE id = ?').run(id),
 
-  delete: (id) =>
+  archive: (id) =>
+    getDb().prepare('UPDATE classes SET is_archived = 1 WHERE id = ?').run(id),
+
+  restore: (id) =>
+    getDb().prepare('UPDATE classes SET is_archived = 0 WHERE id = ?').run(id),
+
+  hardDelete: (id) =>
     getDb().prepare('DELETE FROM classes WHERE id = ?').run(id),
 
-  deleteOld: () => {
+  archivePast: () => {
     const result = getDb().prepare(
-      "DELETE FROM classes WHERE datetime(start_time) < datetime('now', '-1 month')"
+      "UPDATE classes SET is_archived = 1 WHERE datetime(start_time, '+' || duration_min || ' minutes') < datetime('now', 'localtime') AND is_archived = 0"
     ).run();
     if (result.changes > 0) {
-      console.log(`  ↳ Czyszczenie: usunięto ${result.changes} starych zajęć (> 1 miesiąc).`);
+      console.log(`  ↳ Czyszczenie: zarchiwizowano ${result.changes} minionych zajęć.`);
     }
     return result.changes;
   },
@@ -343,7 +366,7 @@ const ClassModel = {
   getByWeek: (weekStart, weekEnd) =>
     getDb().prepare(`
       SELECT * FROM classes
-      WHERE datetime(start_time) >= datetime(?) AND datetime(start_time) < datetime(?) AND is_cancelled = 0
+      WHERE datetime(start_time) >= datetime(?) AND datetime(start_time) < datetime(?) AND is_cancelled = 0 AND is_archived = 0
       ORDER BY datetime(start_time) ASC
     `).all(weekStart, weekEnd),
 

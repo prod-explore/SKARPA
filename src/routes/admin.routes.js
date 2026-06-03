@@ -197,11 +197,33 @@ router.post('/admin/classes/:id/cancel', requireAdmin, (req, res) => {
 });
 
 // ============================================================
-// POST /admin/classes/:id/delete
+// POST /admin/classes/:id/archive
 // ============================================================
-router.post('/admin/classes/:id/delete', requireAdmin, (req, res) => {
-  ClassModel.delete(req.params.id);
-  res.redirect('/admin?success=Zajęcia+usunięte');
+router.post('/admin/classes/:id/archive', requireAdmin, (req, res) => {
+  ClassModel.archive(req.params.id);
+  res.redirect('/admin?success=Zajęcia+zarchiwizowane');
+});
+
+// ============================================================
+// GET /admin/archive
+// ============================================================
+router.get('/admin/archive', requireAdmin, (req, res) => {
+  const classes = ClassModel.getArchived();
+  res.render('admin/archive', {
+    title: 'Archiwum zajęć',
+    classes,
+    user: req.user,
+    success: req.query.success || null,
+    error: req.query.error || null
+  });
+});
+
+// ============================================================
+// POST /admin/classes/:id/restore
+// ============================================================
+router.post('/admin/classes/:id/restore', requireAdmin, (req, res) => {
+  ClassModel.restore(req.params.id);
+  res.redirect('/admin/archive?success=Zajęcia+przywrócone');
 });
 
 // ============================================================

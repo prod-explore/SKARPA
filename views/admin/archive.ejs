@@ -6,11 +6,11 @@
   <aside class="admin-sidebar">
     <%- include('../partials/admin-sidebar-brand') %>
     <nav class="admin-nav">
-      <a href="/admin" class="admin-nav-link active">📊 Dashboard</a>
+      <a href="/admin" class="admin-nav-link">📊 Dashboard</a>
       <a href="/admin/classes/new" class="admin-nav-link">➕ Nowe zajęcia</a>
       <a href="/admin/consents" class="admin-nav-link">📋 Zgody (<%= typeof pendingConsents !== 'undefined' ? pendingConsents : 0 %>)</a>
       <a href="/calendar" class="admin-nav-link" target="_blank">📅 Kalendarz (widok)</a>
-      <a href="/admin/archive" class="admin-nav-link">🗄️ Archiwum</a>
+      <a href="/admin/archive" class="admin-nav-link active">🗄️ Archiwum</a>
     </nav>
     <div class="admin-sidebar-footer">
       <div class="admin-user-info">
@@ -25,13 +25,9 @@
   <!-- Main content -->
   <main class="admin-main">
     <div class="admin-topbar">
-      <h1>Panel Administracyjny</h1>
+      <h1>Archiwum Zajęć</h1>
       <div class="admin-topbar-actions">
-        <form action="/admin/clone-week" method="POST" style="display:inline;"
-              onsubmit="return confirm('Czy na pewno chcesz sklonować wszystkie zajęcia z bieżącego tygodnia na następny tydzień?');">
-          <button type="submit" class="btn btn--outline">📋 Klonuj tydzień → następny</button>
-        </form>
-        <a href="/admin/classes/new" class="btn btn--primary">+ Nowe zajęcia</a>
+        <a href="/admin" class="btn btn--outline">← Powrót do Dashboardu</a>
       </div>
     </div>
 
@@ -42,46 +38,14 @@
       <div class="alert alert--error"><%= error %></div>
     <% } %>
 
-    <!-- Statystyki -->
-    <div class="admin-stats">
-      <div class="admin-stat-card">
-        <div class="admin-stat-num"><%= stats.upcomingCount %></div>
-        <div class="admin-stat-label">Nadchodzące zajęcia</div>
-      </div>
-      <div class="admin-stat-card">
-        <div class="admin-stat-num"><%= stats.totalClasses %></div>
-        <div class="admin-stat-label">Wszystkie zajęcia</div>
-      </div>
-      <div class="admin-stat-card">
-        <div class="admin-stat-num"><%= stats.totalParticipants %></div>
-        <div class="admin-stat-label">Łącznie uczestników</div>
-      </div>
-      <div class="admin-stat-card">
-        <div class="admin-stat-num"><%= stats.qrScans %></div>
-        <div class="admin-stat-label">📱 Skany QR z ulotki</div>
-      </div>
-    </div>
-
-    <!-- Info o manualnych zapisach -->
-    <div class="admin-info-box">
-      <div class="admin-info-icon">📧</div>
-      <div>
-        <strong>Manualne zapisy awaryjne</strong>
-        <p>
-          W przypadku problemów technicznych z systemem, uczestnicy mogą zapisywać się
-          bezpośrednio przez e-mail:
-          <a href="mailto:wspinanie.ue@gmail.com" class="admin-email-link">wspinanie.ue@gmail.com</a>.
-        </p>
-      </div>
-    </div>
-
-    <!-- Tabela zajęć -->
+    <!-- Tabela zarchiwizowanych zajęć -->
     <div class="admin-section">
-      <h2>Wszystkie zajęcia</h2>
+      <h2>Zarchiwizowane zajęcia</h2>
+      <p style="color: #666; margin-bottom: 1rem;">Te zajęcia są ukryte z głównego kalendarza. Możesz przywrócić je, jeśli zarchiwizowano je przez pomyłkę.</p>
 
       <% if (classes.length === 0) { %>
         <div class="empty-state">
-          <p>Brak zajęć. <a href="/admin/classes/new">Dodaj pierwsze.</a></p>
+          <p>Brak zajęć w archiwum.</p>
         </div>
       <% } else { %>
         <div class="admin-table-wrapper">
@@ -106,13 +70,12 @@
                   const endTimeStr = endDate.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
                   const timeStr = date.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
                   const isPast = date < new Date();
-                  const isEnded = endDate < new Date();
                   const adultTaken = cls.adult_taken || 0;
                   const childTaken = cls.child_taken || 0;
                   const adultPct = Math.round(adultTaken / cls.max_spots * 100);
                   const childPct = cls.max_child_spots > 0 ? Math.round(childTaken / cls.max_child_spots * 100) : 0;
                 %>
-                <tr class="<%= cls.is_cancelled ? 'row--cancelled' : isPast ? 'row--past' : '' %>">
+                <tr class="row--past">
                   <td>
                     <strong><%= cls.name %></strong>
                     <% if (cls.instructor) { %><br><small>👤 <%= cls.instructor %></small><% } %>
@@ -145,32 +108,15 @@
                     <% } %>
                   </td>
                   <td>
-                    <% if (cls.is_cancelled) { %>
-                      <span class="badge badge--cancelled">Odwołane</span>
-                    <% } else if (isEnded) { %>
-                      <span class="badge badge--past">Zakończone</span>
-                    <% } else if (isPast && !isEnded) { %>
-                      <span class="badge badge--active" style="background-color: var(--primary);">W trakcie</span>
-                    <% } else { %>
-                      <span class="badge badge--active">Aktywne</span>
-                    <% } %>
+                    <span class="badge badge--past">Archiwum</span>
                   </td>
                   <td class="admin-actions">
                     <a href="/admin/classes/<%= cls.id %>/attendance" class="btn btn--outline btn--xs">
                       👥 Lista
                     </a>
-                    <a href="/admin/classes/<%= cls.id %>/edit" class="btn btn--outline btn--xs">
-                      ✏️ Edytuj
-                    </a>
-                    <% if (!cls.is_cancelled && !isPast) { %>
-                    <form action="/admin/classes/<%= cls.id %>/cancel" method="POST" style="display:inline;"
-                          data-confirm="Odwołać te zajęcia?">
-                      <button type="submit" class="btn btn--warning btn--xs">⚠️ Odwołaj</button>
-                    </form>
-                    <% } %>
-                    <form action="/admin/classes/<%= cls.id %>/archive" method="POST" style="display:inline;"
-                          data-confirm="Przenieść te zajęcia do archiwum?">
-                      <button type="submit" class="btn btn--danger btn--xs">🗄️ Archiwizuj</button>
+                    <form action="/admin/classes/<%= cls.id %>/restore" method="POST" style="display:inline;"
+                          data-confirm="Przywrócić te zajęcia do głównego kalendarza?">
+                      <button type="submit" class="btn btn--primary btn--xs">♻️ Przywróć</button>
                     </form>
                   </td>
                 </tr>
