@@ -1,0 +1,393 @@
+<%- include('../partials/head') %>
+
+<div class="admin-layout">
+
+  <!-- Sidebar -->
+  <aside class="admin-sidebar">
+    <%- include('../partials/admin-sidebar-brand') %>
+    <nav class="admin-nav">
+      <a href="/admin" class="admin-nav-link">📊 Dashboard</a>
+      <a href="/admin/calendar" class="admin-nav-link active">📅 Kalendarz</a>
+      <a href="/admin/classes/new" class="admin-nav-link">➕ Nowe zajęcia</a>
+      <a href="/admin/consents" class="admin-nav-link">📋 Zgody (<%= typeof pendingConsents !== 'undefined' ? pendingConsents : 0 %>)</a>
+      <a href="/admin/archive" class="admin-nav-link">🗄️ Archiwum</a>
+    </nav>
+    <div class="admin-sidebar-footer">
+      <div class="admin-user-info">
+        <span>👤 <%= user.email %></span>
+      </div>
+      <form action="/auth/logout" method="POST">
+        <button type="submit" class="btn btn--outline btn--sm btn--full">Wyloguj</button>
+      </form>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="admin-main">
+    <div class="admin-topbar">
+      <div>
+        <h1>📅 Kalendarz zajęć</h1>
+        <p class="admin-topbar-sub">Kliknij na zajęcia, aby zobaczyć szczegóły i opcje zarządzania.</p>
+      </div>
+      <div class="admin-topbar-actions">
+        <a href="/admin/classes/new" class="btn btn--primary">+ Nowe zajęcia</a>
+      </div>
+    </div>
+
+    <% if (typeof success !== 'undefined' && success) { %>
+      <div class="alert alert--success"><%= success %></div>
+    <% } %>
+    <% if (typeof error !== 'undefined' && error) { %>
+      <div class="alert alert--error"><%= error %></div>
+    <% } %>
+
+    <!-- Nawigacja tygodniowa -->
+    <div class="kcal-week-nav">
+      <a href="/admin/calendar?week=<%= weekOffset - 1 %>" class="btn btn--outline btn--sm">← Poprzedni tydzień</a>
+      <span class="kcal-week-label">
+        <%= weekStart.toLocaleDateString('pl-PL', { day: 'numeric', month: 'long' }) %> –
+        <%= weekEnd.toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' }) %>
+      </span>
+      <a href="/admin/calendar?week=<%= weekOffset + 1 %>" class="btn btn--outline btn--sm">Następny tydzień →</a>
+    </div>
+
+    <%
+      /* ========== PRE-PROCESSING: group events by day, detect overlaps ========== */
+      const PX_PER_HOUR = 64;
+      const totalHours = END_HOUR - START_HOUR;
+      const gridHeight = totalHours * PX_PER_HOUR;
+
+      /* Build per-day arrays */
+      const dayEvents = [[], [], [], [], [], [], []];
+
+      classes.forEach(cls => {
+        const st = new Date(cls.start_time);
+        const dayInWeek = Math.round(
+          (new Date(weekStart.toDateString()) - new Date(st.toDateString())) / 86400000
+        ) * -1;
+        if (dayInWeek < 0 || dayInWeek > 6) return;
+
+        const startMin = st.getHours() * 60 + st.getMinutes();
+        const endMin   = startMin + (cls.duration_min || 60);
+        const offsetMin = startMin - START_HOUR * 60;
+        if (offsetMin < 0) return;
+
+        const et = new Date(st.getTime() + (cls.duration_min || 60) * 60000);
+        const timeStr = st.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
+        const endStr  = et.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
+
+        const adultTaken = cls.adult_taken || 0;
+        const childTaken = cls.child_taken || 0;
+        const adultLeft = cls.max_spots - adultTaken;
+        const childLeft = cls.class_type === 'adult_and_child'
+          ? (cls.max_child_spots - childTaken) : 0;
+        const adultPct = Math.round(adultTaken / cls.max_spots * 100);
+        const childPct = cls.max_child_spots > 0 ? Math.round(childTaken / cls.max_child_spots * 100) : 0;
+
+        const endDate = new Date(st.getTime() + (cls.duration_min || 60) * 60000);
+        const isEnded = endDate < new Date();
+        const isPast = st < new Date();
+
+        dayEvents[dayInWeek].push({
+          id:               cls.id,
+          name:             cls.name,
+          instructor:       cls.instructor || '',
+          child_instructor: cls.child_instructor || '',
+          description:      cls.description || '',
+          class_type:       cls.class_type,
+          is_cancelled:     cls.is_cancelled,
+          max_spots:        cls.max_spots,
+          max_child_spots:  cls.max_child_spots,
+          duration_min:     cls.duration_min || 60,
+          color:            cls.color || '#6366f1',
+          startMin, endMin, offsetMin, timeStr, endStr,
+          adultTaken, childTaken, adultLeft, childLeft, adultPct, childPct,
+          isFull: adultLeft <= 0,
+          isEnded, isPast,
+          col: 0,
+          totalCols: 1
+        });
+      });
+
+      /* Overlap detection: greedy column assignment per day */
+      dayEvents.forEach(events => {
+        events.sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin);
+
+        const columns = [];
+        events.forEach(ev => {
+          let placed = false;
+          for (let c = 0; c < columns.length; c++) {
+            const last = columns[c][columns[c].length - 1];
+            if (last.endMin <= ev.startMin) {
+              columns[c].push(ev);
+              ev.col = c;
+              placed = true;
+              break;
+            }
+          }
+          if (!placed) {
+            ev.col = columns.length;
+            columns.push([ev]);
+          }
+        });
+
+        events.forEach(ev => {
+          let maxCol = ev.col;
+          events.forEach(other => {
+            if (other.startMin < ev.endMin && other.endMin > ev.startMin) {
+              if (other.col > maxCol) maxCol = other.col;
+            }
+          });
+          ev.totalCols = maxCol + 1;
+        });
+      });
+    %>
+
+    <!-- ========== WEEKLY GRID ========== -->
+    <div class="kcal-wrapper">
+      <div class="kcal-scroll">
+        <!-- Header row -->
+        <div class="kcal-header">
+          <div class="kcal-gutter-hd"></div>
+          <% for (let d = 0; d < 7; d++) {
+            const day = new Date(weekStart);
+            day.setDate(weekStart.getDate() + d);
+            const isToday = day.toDateString() === new Date().toDateString();
+          %>
+          <div class="kcal-day-hd <%= isToday ? 'kcal-day-hd--today' : '' %>">
+            <span class="kcal-day-name"><%= day.toLocaleDateString('pl-PL', { weekday: 'short' }) %></span>
+            <span class="kcal-day-num <%= isToday ? 'kcal-day-num--today' : '' %>"><%= day.getDate() %></span>
+          </div>
+          <% } %>
+        </div>
+        <div class="kcal-body" style="height:calc(var(--hh) * <%= totalHours %>);">
+          <!-- Time gutter -->
+          <div class="kcal-gutter">
+            <% for (let h = START_HOUR; h < END_HOUR; h++) { %>
+            <div class="kcal-gutter-label" style="top:calc(var(--hh) * <%= h - START_HOUR %>);">
+              <%= String(h).padStart(2, '0') %>:00
+            </div>
+            <% } %>
+          </div>
+
+          <!-- 7 day columns -->
+          <div class="kcal-cols">
+            <% for (let d = 0; d < 7; d++) {
+              const day = new Date(weekStart);
+              day.setDate(weekStart.getDate() + d);
+              const isToday = day.toDateString() === new Date().toDateString();
+            %>
+            <div class="kcal-col <%= isToday ? 'kcal-col--today' : '' %>">
+              <!-- Hour gridlines -->
+              <% for (let h = 0; h <= totalHours; h++) { %>
+              <div class="kcal-gridline" style="top:calc(var(--hh) * <%= h %>);"></div>
+              <% } %>
+              <!-- Half-hour gridlines -->
+              <% for (let h = 0; h < totalHours; h++) { %>
+              <div class="kcal-gridline kcal-gridline--half" style="top:calc(var(--hh) * <%= h %> + var(--hh) * 0.5);"></div>
+              <% } %>
+
+              <!-- Events for this day -->
+              <% dayEvents[d].forEach(ev => {
+                const topMult    = (ev.offsetMin / 60);
+                const heightMult = (ev.duration_min / 60);
+                const colW     = 100 / ev.totalCols;
+                const leftPct  = ev.col * colW;
+              %>
+              <div class="kcal-ev <%= ev.isFull ? 'kcal-ev--full' : '' %> <%= ev.is_cancelled ? 'kcal-ev--cancelled' : '' %>"
+                   style="
+                     top:calc(var(--hh) * <%= topMult.toFixed(4) %>);
+                     height:calc(var(--hh) * <%= heightMult.toFixed(4) %>);
+                     left:calc(<%= leftPct.toFixed(2) %>% + 2px);
+                     width:calc(<%= colW.toFixed(2) %>% - 4px);
+                     --ev-color:<%= ev.color %>;
+                   "
+                   data-id="<%= ev.id %>"
+                   data-name="<%= ev.name %>"
+                   data-time="<%= ev.timeStr %> – <%= ev.endStr %>"
+                   data-instructor="<%= ev.instructor %>"
+                   data-child-instructor="<%= ev.child_instructor %>"
+                   data-description="<%= ev.description %>"
+                   data-adult-taken="<%= ev.adultTaken %>"
+                   data-adult-max="<%= ev.max_spots %>"
+                   data-child-taken="<%= ev.childTaken %>"
+                   data-child-max="<%= ev.max_child_spots %>"
+                   data-adult-left="<%= ev.adultLeft %>"
+                   data-child-left="<%= ev.childLeft %>"
+                   data-type="<%= ev.class_type %>"
+                   data-cancelled="<%= ev.is_cancelled ? '1' : '0' %>"
+                   data-ended="<%= ev.isEnded ? '1' : '0' %>"
+                   data-past="<%= ev.isPast ? '1' : '0' %>"
+                   role="button" tabindex="0" aria-label="<%= ev.name %>"
+              >
+                <span class="kcal-ev-name"><%= ev.name %></span>
+                <span class="kcal-ev-time"><%= ev.timeStr %> – <%= ev.endStr %></span>
+                <% if (ev.instructor) { %>
+                <span class="kcal-ev-instr"><%= ev.instructor %></span>
+                <% } %>
+                <span class="kcal-ev-spots-tag"><%= ev.adultTaken %>/<%= ev.max_spots %> D<% if (ev.class_type === 'adult_and_child') { %> · <%= ev.childTaken %>/<%= ev.max_child_spots %> Dz<% } %></span>
+                <% if (ev.isFull) { %>
+                <span class="kcal-ev-badge">Pełne</span>
+                <% } else if (ev.is_cancelled) { %>
+                <span class="kcal-ev-badge">Odwołane</span>
+                <% } %>
+              </div>
+              <% }); %>
+            </div>
+            <% } %>
+          </div>
+        </div>
+      </div>
+    </div><!-- .kcal-wrapper -->
+
+  </main>
+</div>
+
+<!-- ADMIN MODAL SZCZEGÓŁÓW -->
+<div id="adminClassModal" class="cal-modal-overlay" aria-modal="true" role="dialog" style="display:none;">
+  <div class="cal-modal" style="width:min(580px, 95vw);">
+    <button class="cal-modal-close" id="adminModalClose" aria-label="Zamknij">✕</button>
+    <div class="cal-modal-accent" id="adminModalAccent"></div>
+    <div class="cal-modal-body">
+      <h2 class="cal-modal-title" id="adminModalTitle"></h2>
+      <p class="cal-modal-time" id="adminModalTime"></p>
+
+      <div class="cal-modal-meta" id="adminModalMeta"></div>
+      <p class="cal-modal-desc" id="adminModalDesc"></p>
+
+      <!-- Spots bars -->
+      <div class="acal-spots-section" id="adminModalSpots"></div>
+
+      <!-- Status badge -->
+      <div style="margin-bottom:1rem;" id="adminModalStatus"></div>
+
+      <!-- Admin actions -->
+      <div class="acal-admin-actions" id="adminModalActions"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ── Admin Modal logic ───────────────────────────────────── */
+  const modal        = document.getElementById('adminClassModal');
+  const modalClose   = document.getElementById('adminModalClose');
+  const modalAccent  = document.getElementById('adminModalAccent');
+  const modalTitle   = document.getElementById('adminModalTitle');
+  const modalTime    = document.getElementById('adminModalTime');
+  const modalMeta    = document.getElementById('adminModalMeta');
+  const modalDesc    = document.getElementById('adminModalDesc');
+  const modalSpots   = document.getElementById('adminModalSpots');
+  const modalStatus  = document.getElementById('adminModalStatus');
+  const modalActions = document.getElementById('adminModalActions');
+
+  function openAdminModal(el) {
+    const d = el.dataset;
+    const isCancelled = d.cancelled === '1';
+    const isEnded     = d.ended === '1';
+    const isPast      = d.past === '1';
+    const adultTaken  = parseInt(d.adultTaken);
+    const adultMax    = parseInt(d.adultMax);
+    const childTaken  = parseInt(d.childTaken);
+    const childMax    = parseInt(d.childMax);
+    const isMixed     = d.type === 'adult_and_child';
+    const adultPct    = adultMax > 0 ? Math.round(adultTaken / adultMax * 100) : 0;
+    const childPct    = childMax > 0 ? Math.round(childTaken / childMax * 100) : 0;
+
+    modalAccent.style.background = getComputedStyle(el).getPropertyValue('--ev-color');
+    modalTitle.textContent = d.name;
+    modalTime.textContent  = d.time;
+
+    // Meta
+    let meta = '';
+    if (d.instructor)      meta += `<span>👤 ${d.instructor}</span>`;
+    if (d.childInstructor) meta += `<span>🧒 Animacje: ${d.childInstructor}</span>`;
+    meta += `<span>${isMixed ? '👥 Dorośli + Dzieci' : '🧑 Tylko dorośli'}</span>`;
+    modalMeta.innerHTML = meta;
+
+    // Description
+    const fullDesc = d.description || '';
+    modalDesc.textContent = fullDesc;
+    modalDesc.style.display = fullDesc ? '' : 'none';
+
+    // Spots bars
+    let spotsHtml = '<div class="acal-spots-bars">';
+    spotsHtml += `
+      <div class="acal-spot-row">
+        <span class="acal-spot-label">🧑 Dorośli</span>
+        <div class="acal-spot-bar"><div class="acal-spot-bar-fill" style="width:${adultPct}%;${adultPct >= 85 ? 'background:var(--warning)' : ''}${adultPct >= 100 ? ';background:var(--danger)' : ''}"></div></div>
+        <span class="acal-spot-count ${adultPct >= 85 ? 'low' : ''}">${adultTaken}/${adultMax}</span>
+      </div>`;
+    if (isMixed) {
+      spotsHtml += `
+      <div class="acal-spot-row">
+        <span class="acal-spot-label">👦 Dzieci</span>
+        <div class="acal-spot-bar"><div class="acal-spot-bar-fill" style="width:${childPct}%;${childPct >= 85 ? 'background:var(--warning)' : ''}${childPct >= 100 ? ';background:var(--danger)' : ''}"></div></div>
+        <span class="acal-spot-count ${childPct >= 85 ? 'low' : ''}">${childTaken}/${childMax}</span>
+      </div>`;
+    }
+    spotsHtml += '</div>';
+    modalSpots.innerHTML = spotsHtml;
+
+    // Status
+    let statusHtml = '';
+    if (isCancelled) {
+      statusHtml = '<span class="badge badge--cancelled">Odwołane</span>';
+    } else if (isEnded) {
+      statusHtml = '<span class="badge badge--past">Zakończone</span>';
+    } else if (isPast && !isEnded) {
+      statusHtml = '<span class="badge badge--active" style="background-color: var(--primary);">W trakcie</span>';
+    } else {
+      statusHtml = '<span class="badge badge--active">Aktywne</span>';
+    }
+    modalStatus.innerHTML = statusHtml;
+
+    // Actions
+    let actionsHtml = `
+      <a href="/admin/classes/${d.id}/attendance" class="btn btn--outline btn--sm">👥 Lista uczestników</a>
+      <a href="/admin/classes/${d.id}/edit" class="btn btn--outline btn--sm">✏️ Edytuj</a>`;
+
+    if (!isCancelled && !isPast) {
+      actionsHtml += `
+      <form action="/admin/classes/${d.id}/cancel" method="POST" style="display:inline;"
+            data-confirm="Odwołać te zajęcia?">
+        <button type="submit" class="btn btn--warning btn--xs">⚠️ Odwołaj</button>
+      </form>`;
+    }
+    actionsHtml += `
+      <form action="/admin/classes/${d.id}/archive" method="POST" style="display:inline;"
+            data-confirm="Przenieść te zajęcia do archiwum?">
+        <button type="submit" class="btn btn--danger btn--xs">🗄️ Archiwizuj</button>
+      </form>`;
+
+    modalActions.innerHTML = actionsHtml;
+
+    // Rebind confirm handlers for injected forms
+    modalActions.querySelectorAll('[data-confirm]').forEach(form => {
+      form.addEventListener('submit', function(e) {
+        if (!confirm(this.dataset.confirm)) e.preventDefault();
+      });
+    });
+
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    modalClose.focus();
+  }
+
+  function closeAdminModal() {
+    modal.style.display = 'none';
+    document.body.style.overflow = '';
+  }
+
+  /* Bind events */
+  document.querySelectorAll('.kcal-ev').forEach(el => {
+    el.addEventListener('click', () => openAdminModal(el));
+    el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openAdminModal(el); } });
+  });
+
+  modalClose.addEventListener('click', closeAdminModal);
+  modal.addEventListener('click', e => { if (e.target === modal) closeAdminModal(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAdminModal(); });
+</script>
+<script src="/js/main.js"></script>
+</body>
+</html>
