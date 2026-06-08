@@ -439,6 +439,9 @@ router.post('/admin/classes/:classId/participants/:participantId/remove', requir
 // POST /admin/clone-week — Klonuj zajęcia bieżącego tygodnia na następny
 // ============================================================
 router.post('/admin/clone-week', requireAdmin, (req, res) => {
+  const weeksAhead = parseInt(req.body.weeksAhead) || 1;
+  const daysToAdd = weeksAhead * 7;
+
   // Oblicz granice bieżącego tygodnia (poniedziałek 00:00 — niedziela 23:59)
   const now = new Date();
   const dayOfWeek = now.getDay(); // 0=niedziela, 1=poniedziałek...
@@ -465,9 +468,9 @@ router.post('/admin/clone-week', requireAdmin, (req, res) => {
 
   let clonedCount = 0;
   for (const c of thisWeekClasses) {
-    // Parse start_time and add 7 days in local time
+    // Parse start_time and add N days in local time
     const originalStart = new Date(c.start_time);
-    originalStart.setDate(originalStart.getDate() + 7);
+    originalStart.setDate(originalStart.getDate() + daysToAdd);
     
     // Format back to YYYY-MM-DDThh:mm in local time
     const tzOff = originalStart.getTimezoneOffset() * 60000;
@@ -495,10 +498,11 @@ router.post('/admin/clone-week', requireAdmin, (req, res) => {
   }
 
   if (clonedCount === 0) {
-    return res.redirect('/admin?info=Wszystkie+zajęcia+z+bieżącego+tygodnia+już+istnieją+w+następnym+tygodniu');
+    return res.redirect('/admin?info=Wszystkie+zajęcia+z+bieżącego+tygodnia+już+istnieją+w+wybranym+tygodniu');
   }
 
-  return res.redirect(`/admin?success=Sklonowano+${clonedCount}+zajęć+na+następny+tydzień`);
+  const weekText = weeksAhead === 1 ? 'następny tydzień' : `za ${weeksAhead} tygodnie/tygodni`;
+  return res.redirect(`/admin?success=Sklonowano+${clonedCount}+zajęć+${encodeURIComponent(weekText)}`);
 });
 
 module.exports = router;
