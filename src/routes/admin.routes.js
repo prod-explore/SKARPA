@@ -35,6 +35,23 @@ function ensureAdminAccount(email) {
 // Inicjalizuj wszystkie konta administratorów z listy
 ADMIN_EMAILS.forEach(ensureAdminAccount);
 
+// Inicjalizuj konta instruktorów
+function ensureInstructorAccount(email, firstName) {
+  let instructorUser = UserModel.findByEmail(email);
+  if (!instructorUser) {
+    UserModel.create(email, firstName, 'Instruktor');
+    instructorUser = UserModel.findByEmail(email);
+  }
+  if (!instructorUser.is_instructor || instructorUser.first_name !== firstName) {
+    getDb().prepare('UPDATE users SET is_instructor = 1, is_verified = 1, age_category = ?, first_name = ? WHERE id = ?')
+      .run('adult', firstName, instructorUser.id);
+  }
+}
+
+// Utwórz instruktorów (wymagane z zadania)
+ensureInstructorAccount('Yeeelki@gmail.com', 'Margo');
+ensureInstructorAccount('justx2000@gmail.com', 'Mikołaj');
+
 // ============================================================
 // GET /admin/login
 // ============================================================
@@ -179,7 +196,8 @@ router.get('/admin/calendar', requireAdmin, (req, res) => {
 // GET /admin/classes/new
 // ============================================================
 router.get('/admin/classes/new', requireAdmin, (req, res) => {
-  res.render('admin/class-form', { title: 'Nowe zajęcia', classData: null, user: req.user, error: null });
+  const instructors = UserModel.getInstructors();
+  res.render('admin/class-form', { title: 'Nowe zajęcia', classData: null, user: req.user, error: null, instructors });
 });
 
 // ============================================================
@@ -188,10 +206,12 @@ router.get('/admin/classes/new', requireAdmin, (req, res) => {
 router.post('/admin/classes', requireAdmin, (req, res) => {
   const { name, description, startTime, endTime, classType, maxSpots, maxChildSpots, instructor, childInstructor, color } = req.body;
 
+  const instructors = UserModel.getInstructors();
   if (!name?.trim() || !startTime || !maxSpots) {
     return res.render('admin/class-form', {
       title: 'Nowe zajęcia', classData: req.body, user: req.user,
-      error: 'Wymagane: nazwa, data/godzina, max. liczba osób.'
+      error: 'Wymagane: nazwa, data/godzina, max. liczba osób.',
+      instructors
     });
   }
 
@@ -218,7 +238,8 @@ router.post('/admin/classes', requireAdmin, (req, res) => {
 router.get('/admin/classes/:id/edit', requireAdmin, (req, res) => {
   const classData = ClassModel.getById(req.params.id);
   if (!classData) return res.redirect('/admin?error=Nie+znaleziono+zajęć');
-  res.render('admin/class-form', { title: `Edytuj: ${classData.name}`, classData, user: req.user, error: null });
+  const instructors = UserModel.getInstructors();
+  res.render('admin/class-form', { title: `Edytuj: ${classData.name}`, classData, user: req.user, error: null, instructors });
 });
 
 // ============================================================

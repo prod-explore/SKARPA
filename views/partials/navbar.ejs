@@ -23,6 +23,8 @@
         <a href="/dashboard" class="nav-link">Mój panel</a>
         <% if (user.is_admin) { %>
           <a href="/admin" class="nav-link nav-link--admin">⚙ Admin</a>
+        <% } else if (user.is_instructor) { %>
+          <a href="/instructor" class="nav-link nav-link--instructor">📋 Instruktor</a>
         <% } %>
         <form action="/auth/logout" method="POST" style="display:inline;">
           <button type="submit" class="nav-link nav-link--btn">Wyloguj</button>

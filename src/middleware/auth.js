@@ -113,6 +113,16 @@ function requireAdmin(req, res, next) {
 }
 
 /**
+ * Middleware: wymaga uprawnień instruktora lub admina
+ */
+function requireInstructor(req, res, next) {
+  if (!req.user || (!req.user.is_admin && !req.user.is_instructor)) {
+    return res.redirect('/login?next=' + encodeURIComponent(req.originalUrl));
+  }
+  next();
+}
+
+/**
  * Ustawia cookie sesji użytkownika
  */
 function setAuthCookie(res, user) {
@@ -133,5 +143,6 @@ module.exports = {
   requireAuth,
   requireProfile,
   requireAdmin,
+  requireInstructor,
   setAuthCookie
 };

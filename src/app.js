@@ -29,6 +29,7 @@ initEmailService().catch(err => console.warn('Email init warning:', err.message)
 const authRoutes = require('./routes/auth.routes');
 const userRoutes = require('./routes/user.routes');
 const adminRoutes = require('./routes/admin.routes');
+const instructorRoutes = require('./routes/instructor.routes');
 
 // ============================================================
 // Middleware globalny
@@ -72,6 +73,7 @@ app.use(loadUser);
 app.use('/', authRoutes);
 app.use('/', userRoutes);
 app.use('/', adminRoutes);
+app.use('/', instructorRoutes);
 
 // ============================================================
 // Obsługa błędów 404

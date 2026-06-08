@@ -1,0 +1,140 @@
+<%- include('../partials/head') %>
+
+<div class="user-layout">
+  <%- include('../partials/navbar') %>
+
+  <main class="user-main container">
+    <%
+      const date = new Date(classData.start_time);
+      const dateStr = date.toLocaleDateString('pl-PL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      const timeStr = date.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
+    %>
+
+    <div class="page-header" style="margin-top:2rem; display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:1rem;">
+      <div>
+        <h1 class="page-title">Lista obecności</h1>
+        <p class="page-subtitle"><%= classData.name %> • <%= dateStr %> • <%= timeStr %></p>
+      </div>
+      <div style="display:flex; gap:0.5rem;">
+        <button id="copyListBtn" class="btn btn--outline" title="Skopiuj listę jako tekst gotowy do wysłania">📋 Kopiuj tekst</button>
+        <button onclick="window.print()" class="btn btn--outline" title="Wydrukuj listę (ukrywa zbędne kolumny)">🖨 Drukuj</button>
+        <a href="/instructor" class="btn btn--outline">← Powrót</a>
+      </div>
+    </div>
+
+    <% if (typeof success !== 'undefined' && success) { %>
+      <div class="alert alert--success" style="margin-bottom:1rem;"><%= success %></div>
+    <% } %>
+    <% if (typeof error !== 'undefined' && error) { %>
+      <div class="alert alert--error" style="margin-bottom:1rem;"><%= error %></div>
+    <% } %>
+
+    <div class="attendance-summary" style="margin-top:2rem;">
+      <div class="att-stat">
+        <span class="att-stat-num"><%= allParticipants.filter(p => p.age_category === 'adult').length %></span>
+        <span>Dorośli</span>
+      </div>
+      <div class="att-stat">
+        <span class="att-stat-num"><%= allParticipants.filter(p => p.age_category === 'child').length %></span>
+        <span>Dzieci</span>
+      </div>
+      <div class="att-stat">
+        <span class="att-stat-num"><%= classData.max_spots %></span>
+        <span>Maks. dorośli</span>
+      </div>
+      <% if (classData.class_type === 'adult_and_child') { %>
+      <div class="att-stat">
+        <span class="att-stat-num"><%= classData.max_child_spots %></span>
+        <span>Maks. dzieci</span>
+      </div>
+      <% } %>
+      <div class="att-stat">
+        <span class="att-stat-num"><%= bookings.length %></span>
+        <span>Rezerwacji</span>
+      </div>
+    </div>
+
+    <!-- Lista uczestników -->
+    <div class="admin-section attendance-print-section" style="margin-top:2rem; background:#fff; padding:1.5rem; border-radius:12px; border:1px solid var(--border-color);">
+      <h2>Lista uczestników</h2>
+      <div style="overflow-x:auto;">
+        <table class="admin-table attendance-table" style="width:100%; min-width:600px;">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Imię i Nazwisko</th>
+              <th>Kategoria</th>
+              <th>Wiek</th>
+              <th class="print-hide">Zapisał(a)</th>
+              <th class="no-print">E-mail kontaktowy</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% allParticipants.forEach((p, idx) => { %>
+              <tr>
+                <td><%= idx + 1 %></td>
+                <td><strong><%= p.first_name %> <%= p.last_name %></strong></td>
+                <td>
+                  <span class="badge-cat badge-cat--<%= p.age_category === 'child' ? 'kids' : 'adults' %>">
+                    <%= p.age_category === 'child' ? '👦 Dziecko' : '🧑 Dorosły' %>
+                  </span>
+                </td>
+                <td>
+                  <% const age = p.child_age || p.age; %>
+                  <%= age != null ? age + ' lat' : '—' %>
+                </td>
+                <td class="print-hide"><%= p.is_main ? '★ Sam/a' : 'Dołączony' %></td>
+                <td class="no-print"><a href="mailto:<%= p.bookerEmail %>"><%= p.bookerEmail %></a></td>
+              </tr>
+            <% }); %>
+            <% if (allParticipants.length === 0) { %>
+              <tr><td colspan="6" style="text-align:center;color:#999;padding:2rem;">Brak zapisanych uczestników</td></tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<style>
+@media print {
+  .navbar, .btn, .no-print, .print-hide, .page-subtitle { display: none !important; }
+  .user-main { margin: 0; padding: 0; max-width: 100%; }
+  .attendance-print-section { padding: 0 !important; border: none !important; margin-top: 1rem !important; }
+  .attendance-table { width: 100% !important; border-collapse: collapse; }
+  .attendance-table th, .attendance-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+}
+</style>
+
+<script>
+document.getElementById('copyListBtn')?.addEventListener('click', () => {
+  const participants = <%- JSON.stringify(allParticipants) %>;
+  const className = <%- JSON.stringify(classData.name) %>;
+  const dateStr = <%- JSON.stringify(dateStr) %>;
+  const timeStr = <%- JSON.stringify(timeStr) %>;
+  
+  let text = `Zajęcia: ${className}\nData: ${dateStr} ${timeStr}\n\nUczestnicy:\n`;
+  
+  if (participants.length === 0) {
+    text += "Brak zapisanych uczestników.";
+  } else {
+    participants.forEach((p, idx) => {
+      const age = p.child_age || p.age;
+      const ageStr = age ? ` (${age} lat)` : '';
+      const cat = p.age_category === 'child' ? 'Dziecko' : 'Dorosły';
+      text += `${idx + 1}. ${p.first_name} ${p.last_name} - ${cat}${ageStr}\n`;
+    });
+  }
+  
+  navigator.clipboard.writeText(text).then(() => {
+    alert("Lista skopiowana do schowka! Możesz ją teraz wkleić w wiadomości.");
+  }).catch(err => {
+    alert("Nie udało się skopiować automatycznie. Zaznacz tabelę ręcznie i skopiuj.");
+    console.error(err);
+  });
+});
+</script>
+
+<%- include('../partials/footer') %>

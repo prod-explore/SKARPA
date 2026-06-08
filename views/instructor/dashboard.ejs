@@ -1,0 +1,65 @@
+<%- include('../partials/head') %>
+
+<div class="user-layout">
+  <%- include('../partials/navbar') %>
+
+  <main class="user-main container">
+    <div class="page-header" style="margin-top:2rem;">
+      <h1 class="page-title">Panel Instruktora: <%= fullName %></h1>
+      <p class="page-subtitle">Twoje przypisane zajęcia i listy obecności.</p>
+    </div>
+
+    <% if (typeof success !== 'undefined' && success) { %>
+      <div class="alert alert--success"><%= success %></div>
+    <% } %>
+    <% if (typeof error !== 'undefined' && error) { %>
+      <div class="alert alert--error"><%= error %></div>
+    <% } %>
+
+    <section class="user-section">
+      <div class="user-section-header">
+        <h2>Twoje zajęcia</h2>
+      </div>
+
+      <% if (classes.length === 0) { %>
+        <div class="empty-state">
+          <h3>Brak zajęć</h3>
+          <p>Obecnie nie masz przypisanych żadnych zajęć jako instruktor.</p>
+        </div>
+      <% } else { %>
+        <div class="class-grid">
+          <% classes.forEach(c => { %>
+            <% 
+              const date = new Date(c.start_time);
+              const dateStr = date.toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' });
+              const timeStr = date.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
+              const totalTaken = (c.adult_taken || 0) + (c.child_taken || 0);
+              const totalSpots = c.max_spots + (c.max_child_spots || 0);
+              const isPast = date < new Date();
+            %>
+            <div class="class-card <%= isPast ? 'class-card--archived' : '' %>" style="--class-color: <%= c.color || '#6366f1' %>;">
+              <div class="class-card-stripe"></div>
+              <div class="class-card-header">
+                <h3 class="class-card-title"><%= c.name %></h3>
+                <span class="class-card-badge"><%= c.category === 'mixed' ? 'Rodzinne' : 'Dorośli' %></span>
+              </div>
+              <div class="class-card-info">
+                <p><strong>📅 <%= dateStr %></strong></p>
+                <p><strong>⏰ <%= timeStr %></strong> (<%= c.duration_min %> min)</p>
+                <p>👥 Zapisanych: <%= totalTaken %> / <%= totalSpots %></p>
+                <% if (isPast) { %>
+                  <p style="color: #666; font-size: 0.85rem; margin-top: 0.5rem;">Zakończone</p>
+                <% } %>
+              </div>
+              <div class="class-card-actions">
+                <a href="/instructor/classes/<%= c.id %>/attendance" class="btn btn--outline btn--full">📋 Zobacz listę uczestników</a>
+              </div>
+            </div>
+          <% }); %>
+        </div>
+      <% } %>
+    </section>
+  </main>
+</div>
+
+<%- include('../partials/footer') %>

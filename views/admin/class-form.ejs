@@ -80,11 +80,19 @@
           </div>
           <div class="form-group">
             <label class="form-label">Instruktor (dorośli)</label>
-            <input type="text" name="instructor" class="form-input"
+            <input type="text" name="instructor" list="instructors-list" class="form-input"
                    value="<%= classData ? classData.instructor || '' : '' %>"
-                   placeholder="Imię i nazwisko">
+                   placeholder="Wybierz lub wpisz">
           </div>
         </div>
+
+        <datalist id="instructors-list">
+          <% if (typeof instructors !== 'undefined' && instructors.length > 0) { %>
+            <% instructors.forEach(function(inst) { %>
+              <option value="<%= inst.first_name %> <%= inst.last_name || '' %>"></option>
+            <% }) %>
+          <% } %>
+        </datalist>
 
         <!-- Pola widoczne tylko dla adult_and_child -->
         <div id="childFields" style="<%= (!classData || classData.class_type !== 'adult_and_child') ? 'display:none;' : '' %>">
@@ -97,9 +105,9 @@
             </div>
             <div class="form-group">
               <label class="form-label">Instruktor (dzieci/animacje)</label>
-              <input type="text" name="childInstructor" class="form-input"
+              <input type="text" name="childInstructor" list="instructors-list" class="form-input"
                      value="<%= classData ? classData.child_instructor || '' : '' %>"
-                     placeholder="Imię i nazwisko">
+                     placeholder="Wybierz lub wpisz">
             </div>
           </div>
         </div>

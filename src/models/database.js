@@ -44,6 +44,7 @@ function initDatabase() {
       is_verified        INTEGER DEFAULT 0,
       consent_requested  INTEGER DEFAULT 0,
       is_admin           INTEGER DEFAULT 0,
+      is_instructor      INTEGER DEFAULT 0,
       birth_date         TEXT,
       marketing_consent  INTEGER DEFAULT 0,
       created_at         DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -130,6 +131,7 @@ function initDatabase() {
     { table: 'users', column: 'age_category',      sql: "ALTER TABLE users ADD COLUMN age_category TEXT DEFAULT NULL" },
     { table: 'users', column: 'is_verified',       sql: "ALTER TABLE users ADD COLUMN is_verified INTEGER DEFAULT 0" },
     { table: 'users', column: 'consent_requested', sql: "ALTER TABLE users ADD COLUMN consent_requested INTEGER DEFAULT 0" },
+    { table: 'users', column: 'is_instructor',     sql: "ALTER TABLE users ADD COLUMN is_instructor INTEGER DEFAULT 0" },
     { table: 'users', column: 'birth_date',        sql: "ALTER TABLE users ADD COLUMN birth_date TEXT" },
     { table: 'users', column: 'marketing_consent', sql: "ALTER TABLE users ADD COLUMN marketing_consent INTEGER DEFAULT 0" },
     // classes
@@ -240,6 +242,11 @@ const UserModel = {
   getAllUsers: () =>
     getDb().prepare(
       'SELECT * FROM users WHERE is_admin = 0 ORDER BY created_at DESC'
+    ).all(),
+
+  getInstructors: () =>
+    getDb().prepare(
+      'SELECT * FROM users WHERE is_instructor = 1 ORDER BY first_name ASC'
     ).all()
 };
 
@@ -373,7 +380,21 @@ const ClassModel = {
   existsByNameAndTime: (name, startTime) =>
     !!getDb().prepare(
       'SELECT 1 FROM classes WHERE name = ? AND start_time = ?'
-    ).get(name, startTime)
+    ).get(name, startTime),
+
+  getByInstructorText: (text) =>
+    getDb().prepare(`
+      SELECT c.*,
+        (SELECT COUNT(*) FROM participants p
+          JOIN bookings b ON p.booking_id = b.id
+          WHERE b.class_id = c.id AND p.age_category = 'adult') as adult_taken,
+        (SELECT COUNT(*) FROM participants p
+          JOIN bookings b ON p.booking_id = b.id
+          WHERE b.class_id = c.id AND p.age_category = 'child') as child_taken
+      FROM classes c
+      WHERE instructor LIKE ? OR child_instructor LIKE ?
+      ORDER BY start_time DESC
+    `).all('%' + text + '%', '%' + text + '%')
 };
 
 const BookingModel = {
