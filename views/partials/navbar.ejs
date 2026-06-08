@@ -14,7 +14,11 @@
 
     <div class="nav-menu" id="navMenu">
       <a href="/" class="nav-link">Start</a>
-      <a href="/calendar" class="nav-link">Kalendarz</a>
+      <% if (typeof user !== 'undefined' && user && user.is_admin) { %>
+        <a href="/admin/calendar" class="nav-link">Kalendarz admina</a>
+      <% } else { %>
+        <a href="/calendar" class="nav-link">Kalendarz</a>
+      <% } %>
       <% if (typeof user !== 'undefined' && user) { %>
         <a href="/dashboard" class="nav-link">Mój panel</a>
         <% if (user.is_admin) { %>
