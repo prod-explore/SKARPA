@@ -10,12 +10,12 @@
       const timeStr = date.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
     %>
 
-    <div class="page-header" style="margin-top:2rem; display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:1rem;">
+    <div class="attendance-header">
       <div>
         <h1 class="page-title">Lista obecności</h1>
         <p class="page-subtitle"><%= classData.name %> • <%= dateStr %> • <%= timeStr %></p>
       </div>
-      <div style="display:flex; gap:0.5rem;">
+      <div class="attendance-header-actions">
         <button id="copyListBtn" class="btn btn--outline" title="Skopiuj listę jako tekst gotowy do wysłania">📋 Kopiuj tekst</button>
         <button onclick="window.print()" class="btn btn--outline" title="Wydrukuj listę (ukrywa zbędne kolumny)">🖨 Drukuj</button>
         <a href="/instructor" class="btn btn--outline">← Powrót</a>
@@ -29,7 +29,7 @@
       <div class="alert alert--error" style="margin-bottom:1rem;"><%= error %></div>
     <% } %>
 
-    <div class="attendance-summary" style="margin-top:2rem;">
+    <div class="attendance-summary">
       <div class="att-stat">
         <span class="att-stat-num"><%= allParticipants.filter(p => p.age_category === 'adult').length %></span>
         <span>Dorośli</span>
@@ -55,7 +55,7 @@
     </div>
 
     <!-- Lista uczestników -->
-    <div class="admin-section attendance-print-section" style="margin-top:2rem; background:#fff; padding:1.5rem; border-radius:12px; border:1px solid var(--border-color);">
+    <div class="admin-section attendance-section attendance-print-section">
       <h2>Lista uczestników</h2>
       <div style="overflow-x:auto;">
         <table class="admin-table attendance-table" style="width:100%; min-width:600px;">
@@ -98,6 +98,9 @@
   </main>
 </div>
 
+<!-- Toast notification -->
+<div id="toast" class="toast toast--hidden"></div>
+
 <style>
 @media print {
   .navbar, .btn, .no-print, .print-hide, .page-subtitle { display: none !important; }
@@ -109,14 +112,21 @@
 </style>
 
 <script>
+function showToast(msg, type = 'success') {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.className = `toast toast--${type}`;
+  setTimeout(() => { toast.classList.add('toast--hidden'); }, 3000);
+}
+
 document.getElementById('copyListBtn')?.addEventListener('click', () => {
   const participants = <%- JSON.stringify(allParticipants) %>;
   const className = <%- JSON.stringify(classData.name) %>;
   const dateStr = <%- JSON.stringify(dateStr) %>;
   const timeStr = <%- JSON.stringify(timeStr) %>;
-  
+
   let text = `Zajęcia: ${className}\nData: ${dateStr} ${timeStr}\n\nUczestnicy:\n`;
-  
+
   if (participants.length === 0) {
     text += "Brak zapisanych uczestników.";
   } else {
@@ -127,13 +137,10 @@ document.getElementById('copyListBtn')?.addEventListener('click', () => {
       text += `${idx + 1}. ${p.first_name} ${p.last_name} - ${cat}${ageStr}\n`;
     });
   }
-  
-  navigator.clipboard.writeText(text).then(() => {
-    alert("Lista skopiowana do schowka! Możesz ją teraz wkleić w wiadomości.");
-  }).catch(err => {
-    alert("Nie udało się skopiować automatycznie. Zaznacz tabelę ręcznie i skopiuj.");
-    console.error(err);
-  });
+
+  navigator.clipboard.writeText(text)
+    .then(() => showToast('✅ Lista skopiowana do schowka!', 'success'))
+    .catch(() => showToast('❌ Nie udało się skopiować. Spróbuj ręcznie.', 'error'));
 });
 </script>
 
