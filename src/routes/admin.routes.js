@@ -49,7 +49,7 @@ function ensureInstructorAccount(email, firstName) {
 }
 
 // Utwórz instruktorów (wymagane z zadania)
-ensureInstructorAccount('Yeeelki@gmail.com', 'Margo');
+ensureInstructorAccount('yeeelki@gmail.com', 'Margo');
 ensureInstructorAccount('justx2000@gmail.com', 'Mikołaj');
 
 // ============================================================
