@@ -351,6 +351,9 @@ const ClassModel = {
   cancel: (id) =>
     getDb().prepare('UPDATE classes SET is_cancelled = 1 WHERE id = ?').run(id),
 
+  uncancel: (id) =>
+    getDb().prepare('UPDATE classes SET is_cancelled = 0 WHERE id = ?').run(id),
+
   archive: (id) =>
     getDb().prepare('UPDATE classes SET is_archived = 1 WHERE id = ?').run(id),
 

@@ -168,7 +168,12 @@
                     <a href="/admin/classes/<%= cls.id %>/edit" class="btn btn--outline btn--xs">
                       ✏️ Edytuj
                     </a>
-                    <% if (!cls.is_cancelled && !isPast) { %>
+                    <% if (cls.is_cancelled) { %>
+                    <form action="/admin/classes/<%= cls.id %>/uncancel" method="POST" style="display:inline;"
+                          data-confirm="Przywrócić te zajęcia?">
+                      <button type="submit" class="btn btn--outline btn--xs">✅ Przywróć</button>
+                    </form>
+                    <% } else if (!isPast) { %>
                     <form action="/admin/classes/<%= cls.id %>/cancel" method="POST" style="display:inline;"
                           data-confirm="Odwołać te zajęcia?">
                       <button type="submit" class="btn btn--warning btn--xs">⚠️ Odwołaj</button>

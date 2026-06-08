@@ -279,6 +279,14 @@ router.post('/admin/classes/:id/cancel', requireAdmin, (req, res) => {
 });
 
 // ============================================================
+// POST /admin/classes/:id/uncancel
+// ============================================================
+router.post('/admin/classes/:id/uncancel', requireAdmin, (req, res) => {
+  ClassModel.uncancel(req.params.id);
+  res.redirect('/admin?success=Zajęcia+przywrócone+z+odwołanych');
+});
+
+// ============================================================
 // POST /admin/classes/:id/archive
 // ============================================================
 router.post('/admin/classes/:id/archive', requireAdmin, (req, res) => {

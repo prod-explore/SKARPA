@@ -346,7 +346,13 @@
       <a href="/admin/classes/${d.id}/attendance" class="btn btn--outline btn--sm">👥 Lista uczestników</a>
       <a href="/admin/classes/${d.id}/edit" class="btn btn--outline btn--sm">✏️ Edytuj</a>`;
 
-    if (!isCancelled && !isPast) {
+    if (isCancelled) {
+      actionsHtml += `
+      <form action="/admin/classes/${d.id}/uncancel" method="POST" style="display:inline;"
+            data-confirm="Przywrócić te zajęcia?">
+        <button type="submit" class="btn btn--outline btn--xs">✅ Przywróć</button>
+      </form>`;
+    } else if (!isPast) {
       actionsHtml += `
       <form action="/admin/classes/${d.id}/cancel" method="POST" style="display:inline;"
             data-confirm="Odwołać te zajęcia?">
