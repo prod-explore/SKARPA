@@ -95,7 +95,7 @@
         </datalist>
 
         <!-- Pola widoczne tylko dla adult_and_child -->
-        <div id="childFields" style="<%= (!classData || classData.class_type !== 'adult_and_child') ? 'display:none;' : '' %>">
+        <div id="childFields" style="display: <%= (!classData || classData.class_type !== 'adult_and_child') ? 'none' : 'block' %>;">
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">Maks. dzieci (animacje)</label>
@@ -121,11 +121,9 @@
           </div>
           <div class="form-group" style="flex:1;">
             <label class="form-label">Podgląd</label>
-            <div id="colorPreview" style="
-              height:44px;border-radius:8px;padding:0 16px;display:flex;align-items:center;
-              font-weight:600;font-size:.9rem;color:#fff;
-              background:<%= classData ? (classData.color || '#6366f1') : '#6366f1' %>;
-            ">Podgląd zajęć</div>
+            <div id="colorPreview" style="height:44px; border-radius:8px; padding:0 16px; display:flex; align-items:center; font-weight:600; font-size:0.9rem; color:#fff; background-color: <%= classData ? (classData.color || '#6366f1') : '#6366f1' %>;">
+              Podgląd zajęć
+            </div>
           </div>
         </div>
 

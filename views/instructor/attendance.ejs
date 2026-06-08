@@ -111,6 +111,15 @@
 }
 </style>
 
+<script type="application/json" id="attendanceData">
+  <%- JSON.stringify({
+    participants: allParticipants,
+    className: classData.name,
+    dateStr: dateStr,
+    timeStr: timeStr
+  }) %>
+</script>
+
 <script>
 function showToast(msg, type = 'success') {
   const toast = document.getElementById('toast');
@@ -120,10 +129,11 @@ function showToast(msg, type = 'success') {
 }
 
 document.getElementById('copyListBtn')?.addEventListener('click', () => {
-  const participants = <%- JSON.stringify(allParticipants) %>;
-  const className = <%- JSON.stringify(classData.name) %>;
-  const dateStr = <%- JSON.stringify(dateStr) %>;
-  const timeStr = <%- JSON.stringify(timeStr) %>;
+  const data = JSON.parse(document.getElementById('attendanceData').textContent);
+  const participants = data.participants;
+  const className = data.className;
+  const dateStr = data.dateStr;
+  const timeStr = data.timeStr;
 
   let text = `Zajęcia: ${className}\nData: ${dateStr} ${timeStr}\n\nUczestnicy:\n`;
 
