@@ -109,18 +109,18 @@ app.use((err, req, res, next) => {
 // ============================================================
 // Uruchomienie automatycznego archiwizowania zajęć w tle
 // ============================================================
-setInterval(() => {
+const archiveCron = setInterval(() => {
   try {
     ClassModel.archivePastWeek();
   } catch (err) {
     console.error('Błąd podczas archiwizacji (cron):', err);
   }
-}, 1000 * 60 * 60 * 24); // Uruchamiaj co 24 godziny (raz dziennie)
+}, 1000 * 60 * 60 * 24); // co 24 godziny
 
 // ============================================================
 // Start serwera
 // ============================================================
-app.listen(PORT, '0.0.0.0', () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`
   ╔══════════════════════════════════════════════════╗
   ║   Fantastyczne Wspinanie — System Rejestracji    ║
@@ -131,5 +131,22 @@ app.listen(PORT, '0.0.0.0', () => {
   ╚══════════════════════════════════════════════════╝
   `);
 });
+
+// ============================================================
+// Graceful shutdown — sprzątanie przy zatrzymaniu procesu
+// ============================================================
+function shutdown(signal) {
+  console.log(`\n[${signal}] Zamykanie serwera...`);
+  clearInterval(archiveCron);
+  server.close(() => {
+    console.log('Serwer zamknięty.');
+    process.exit(0);
+  });
+  // Force-exit po 10s jeśli coś się zawiesiło
+  setTimeout(() => process.exit(1), 10_000).unref();
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT',  () => shutdown('SIGINT'));
 
 module.exports = app;

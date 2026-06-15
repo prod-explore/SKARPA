@@ -21,6 +21,20 @@ if (!fs.existsSync(dbDir)) {
 let db;
 
 /**
+ * Zwraca string 'YYYY-MM-DD HH:MM:SS' odpowiadający poniedziałkowi bieżącego tygodnia o 00:00:00
+ * w lokalnej strefie czasowej — używany jako granica archiwizacji zajęć.
+ */
+function getMondayStr() {
+  const now = new Date();
+  const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - (dayOfWeek - 1));
+  monday.setHours(0, 0, 0, 0);
+  const tzOff = monday.getTimezoneOffset() * 60000;
+  return new Date(monday.getTime() - tzOff).toISOString().slice(0, 19).replace('T', ' ');
+}
+
+/**
  * Inicjalizuje połączenie z bazą i tworzy tabele jeśli nie istnieją
  */
 function initDatabase() {
@@ -165,17 +179,9 @@ function initDatabase() {
   console.log('✅ Baza danych SQLite zainicjalizowana:', DB_PATH);
 
   // Automatycznie zarchiwizuj zajęcia z poprzednich tygodni przy starcie
-  const now = new Date();
-  const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay();
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - (dayOfWeek - 1));
-  monday.setHours(0, 0, 0, 0);
-  const tzOff = monday.getTimezoneOffset() * 60000;
-  const mondayStr = new Date(monday.getTime() - tzOff).toISOString().slice(0, 19).replace('T', ' ');
-
   const archived = db.prepare(
     "UPDATE classes SET is_archived = 1 WHERE start_time < ? AND is_archived = 0"
-  ).run(mondayStr);
+  ).run(getMondayStr());
   
   if (archived.changes > 0) {
     console.log(`  ↳ Czyszczenie: zarchiwizowano automatycznie ${archived.changes} zajęć z poprzednich tygodni.`);
@@ -373,17 +379,9 @@ const ClassModel = {
     getDb().prepare('DELETE FROM classes WHERE id = ?').run(id),
 
   archivePastWeek: () => {
-    const now = new Date();
-    const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay();
-    const monday = new Date(now);
-    monday.setDate(now.getDate() - (dayOfWeek - 1));
-    monday.setHours(0, 0, 0, 0);
-    const tzOff = monday.getTimezoneOffset() * 60000;
-    const mondayStr = new Date(monday.getTime() - tzOff).toISOString().slice(0, 19).replace('T', ' ');
-
     const result = getDb().prepare(
       "UPDATE classes SET is_archived = 1 WHERE start_time < ? AND is_archived = 0"
-    ).run(mondayStr);
+    ).run(getMondayStr());
     
     if (result.changes > 0) {
       console.log(`  ↳ Automatyczne archiwizowanie: przeniesiono ${result.changes} zajęć ze starszych tygodni.`);
