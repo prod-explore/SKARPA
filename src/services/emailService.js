@@ -92,7 +92,7 @@ function magicLinkEmailHTML(magicLink, isNewUser) {
               Nie prosiłeś(-aś) o ten link? Możesz go zignorować — żadne działanie nie jest wymagane.
             </p>
             <p style="margin:0;font-size:11px;color:#cccccc;">
-              &#x1F1EA;&#x1F1FA; Projekt dofinansowany ze środków UE &bull; KS Skarpa Bytom, ul. Wojciecha Kilara 33
+              &#x1F1EA;&#x1F1FA; Projekt dofinansowany ze środków UE
             </p>
           </td>
         </tr>
@@ -190,7 +190,7 @@ function participantRemovedHTML(participantName, className, classDate) {
         <tr>
           <td style="background:#f8f9f5;border-top:1px solid #e8ece0;padding:16px 48px;text-align:center;">
             <p style="margin:0;font-size:11px;color:#cccccc;">
-              &#x1F1EA;&#x1F1FA; Projekt dofinansowany ze środków UE &bull; KS Skarpa Bytom
+              &#x1F1EA;&#x1F1FA; Projekt dofinansowany ze środków UE
             </p>
           </td>
         </tr>

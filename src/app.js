@@ -1,6 +1,6 @@
 /**
  * app.js — Główny plik aplikacji Express
- * Skarpa Bytom — System Rejestracji na Zajęcia Wspinaczkowe
+ * Fantastyczne Wspinanie — System Rejestracji na Zajęcia Wspinaczkowe
  * Projekt dofinansowany z funduszy Unii Europejskiej
  */
 
@@ -12,7 +12,7 @@ const cookieParser = require('cookie-parser');
 const morgan = require('morgan');
 const compression = require('compression');
 
-const { initDatabase } = require('./models/database');
+const { initDatabase, ClassModel } = require('./models/database');
 const { initEmailService } = require('./services/emailService');
 const { loadUser } = require('./middleware/auth');
 const { generalLimiter, helmetConfig, sanitizeBody } = require('./middleware/security');
@@ -107,17 +107,28 @@ app.use((err, req, res, next) => {
 });
 
 // ============================================================
+// Uruchomienie automatycznego archiwizowania zajęć w tle
+// ============================================================
+setInterval(() => {
+  try {
+    ClassModel.archivePastWeek();
+  } catch (err) {
+    console.error('Błąd podczas archiwizacji (cron):', err);
+  }
+}, 1000 * 60 * 60 * 24); // Uruchamiaj co 24 godziny (raz dziennie)
+
+// ============================================================
 // Start serwera
 // ============================================================
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`
-  ╔══════════════════════════════════════════╗
-  ║   SKARPA BYTOM — System Rejestracji      ║
-  ║   Projekt dofinansowany z UE             ║
-  ╠══════════════════════════════════════════╣
-  ║   Adres:  ${(process.env.APP_URL || `http://localhost:${PORT}`).padEnd(25)}║
-  ║   Środow: ${(process.env.NODE_ENV || 'development').padEnd(32)}║
-  ╚══════════════════════════════════════════╝
+  ╔══════════════════════════════════════════════════╗
+  ║   Fantastyczne Wspinanie — System Rejestracji    ║
+  ║   Projekt dofinansowany z UE                     ║
+  ╠══════════════════════════════════════════════════╣
+  ║   Adres:  ${(process.env.APP_URL || `http://localhost:${PORT}`).padEnd(33)}║
+  ║   Środow: ${(process.env.NODE_ENV || 'development').padEnd(40)}║
+  ╚══════════════════════════════════════════════════╝
   `);
 });
 

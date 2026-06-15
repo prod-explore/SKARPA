@@ -78,7 +78,7 @@ router.get('/', (req, res) => {
   const { START_HOUR, END_HOUR, SLOT_MIN } = computeGridHours(weekClasses);
 
   res.render('user/index', {
-    title: 'Panel Uczestnika — Skarpa Bytom',
+    title: 'Panel Uczestnika — Fantastyczne Wspinanie',
     weekClasses, weekStart, weekEnd, weekOffset: 0,
     START_HOUR, END_HOUR, SLOT_MIN,
     user: req.user

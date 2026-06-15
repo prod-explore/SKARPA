@@ -1,7 +1,7 @@
 {
-  "name": "skarpa-bytom-rejestracja",
+  "name": "fantastyczne-wspinanie-rejestracja",
   "version": "1.0.0",
-  "description": "System rejestracji na zajęcia wspinaczkowe — Skarpa Bytom (projekt UE)",
+  "description": "System rejestracji na zajęcia wspinaczkowe — Fantastyczne Wspinanie (projekt UE)",
   "main": "src/app.js",
   "scripts": {
     "start": "node src/app.js"

@@ -164,12 +164,21 @@ function initDatabase() {
 
   console.log('✅ Baza danych SQLite zainicjalizowana:', DB_PATH);
 
-  // Automatycznie zarchiwizuj zajęcia, które już minęły (start + czas trwania)
+  // Automatycznie zarchiwizuj zajęcia z poprzednich tygodni przy starcie
+  const now = new Date();
+  const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - (dayOfWeek - 1));
+  monday.setHours(0, 0, 0, 0);
+  const tzOff = monday.getTimezoneOffset() * 60000;
+  const mondayStr = new Date(monday.getTime() - tzOff).toISOString().slice(0, 19).replace('T', ' ');
+
   const archived = db.prepare(
-    "UPDATE classes SET is_archived = 1 WHERE datetime(start_time, '+' || duration_min || ' minutes') < datetime('now', 'localtime') AND is_archived = 0"
-  ).run();
+    "UPDATE classes SET is_archived = 1 WHERE start_time < ? AND is_archived = 0"
+  ).run(mondayStr);
+  
   if (archived.changes > 0) {
-    console.log(`  ↳ Czyszczenie: zarchiwizowano automatycznie ${archived.changes} minionych zajęć.`);
+    console.log(`  ↳ Czyszczenie: zarchiwizowano automatycznie ${archived.changes} zajęć z poprzednich tygodni.`);
   }
 
   return db;
@@ -363,12 +372,21 @@ const ClassModel = {
   hardDelete: (id) =>
     getDb().prepare('DELETE FROM classes WHERE id = ?').run(id),
 
-  archivePast: () => {
+  archivePastWeek: () => {
+    const now = new Date();
+    const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay();
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - (dayOfWeek - 1));
+    monday.setHours(0, 0, 0, 0);
+    const tzOff = monday.getTimezoneOffset() * 60000;
+    const mondayStr = new Date(monday.getTime() - tzOff).toISOString().slice(0, 19).replace('T', ' ');
+
     const result = getDb().prepare(
-      "UPDATE classes SET is_archived = 1 WHERE datetime(start_time, '+' || duration_min || ' minutes') < datetime('now', 'localtime') AND is_archived = 0"
-    ).run();
+      "UPDATE classes SET is_archived = 1 WHERE start_time < ? AND is_archived = 0"
+    ).run(mondayStr);
+    
     if (result.changes > 0) {
-      console.log(`  ↳ Czyszczenie: zarchiwizowano ${result.changes} minionych zajęć.`);
+      console.log(`  ↳ Automatyczne archiwizowanie: przeniesiono ${result.changes} zajęć ze starszych tygodni.`);
     }
     return result.changes;
   },
