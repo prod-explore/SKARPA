@@ -366,7 +366,7 @@ h3 { font-size: clamp(1.1rem, 2.5vw, 1.4rem); }
 .hero-bg {
   position: absolute;
   inset: 0;
-  background: linear-gradient(165deg, #161914 0%, #252b22 52%, #2f362b 100%);
+  background: linear-gradient(165deg, #10120f 0%, #1a1d17 60%, #22281e 100%);
   opacity: 1;
 }
 
@@ -384,8 +384,8 @@ h3 { font-size: clamp(1.1rem, 2.5vw, 1.4rem); }
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: rgba(153, 194, 77, 0.12);
-  border: 1px solid rgba(153, 194, 77, 0.28);
+  background: rgba(153, 194, 77, 0.08);
+  border: 1px solid rgba(153, 194, 77, 0.2);
   color: var(--brand);
   padding: 6px 14px;
   border-radius: 100px;
@@ -397,22 +397,28 @@ h3 { font-size: clamp(1.1rem, 2.5vw, 1.4rem); }
 
 .hero-title {
   font-family: 'Barlow Condensed', sans-serif;
-  font-size: clamp(3.5rem, 10vw, 7rem);
-  font-weight: 900;
+  font-size: clamp(3.5rem, 9vw, 6.5rem);
+  font-weight: 800;
   color: #fff;
   line-height: 0.95;
-  letter-spacing: -2px;
+  letter-spacing: -1px;
   margin-bottom: 1.5rem;
   text-transform: uppercase;
 }
-.hero-title--accent { color: var(--brand); }
+.hero-title--accent {
+  color: transparent;
+  background: linear-gradient(135deg, #b0c96f 0%, #99C24D 50%, #7a9a3d 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
 
 .hero-subtitle {
-  color: rgba(255,255,255,0.65);
-  font-size: clamp(1rem, 2.5vw, 1.2rem);
-  max-width: 520px;
+  color: rgba(255,255,255,0.75);
+  font-size: clamp(1.05rem, 2.5vw, 1.25rem);
+  max-width: 560px;
   margin-bottom: 2.5rem;
-  line-height: 1.7;
+  line-height: 1.6;
+  font-weight: 400;
 }
 
 .hero-actions {
@@ -432,9 +438,12 @@ h3 { font-size: clamp(1.1rem, 2.5vw, 1.4rem); }
 .hero-stat-num {
   display: block;
   font-family: 'Barlow Condensed', sans-serif;
-  font-size: 2.2rem;
-  font-weight: 900;
-  color: var(--brand);
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: transparent;
+  background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.7) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
   line-height: 1;
 }
 .hero-stat-label {
