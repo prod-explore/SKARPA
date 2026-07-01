@@ -5,7 +5,9 @@
 
 ## 📌 Overview
 
-**Fantastyczne Wspinanie** is a secure, lightweight, and fast web application designed to manage registrations and attendance for climbing classes. Built as part of a structured program, it provides instructors with powerful tools to manage participant lists while offering a seamless registration experience for students and parents.
+**Fantastyczne Wspinanie** is a secure, lightweight, and fast web application designed to manage complex registrations and attendance for climbing classes. Built as part of a structured program, it provides instructors with powerful tools to manage participant lists while offering a seamless registration experience for students and parents.
+
+Unlike generic CMS solutions, this platform focuses heavily on **business logic tailored for sports facilities**: a dynamic class schedule, complex instructor-level permissions, and granular participant tracking.
 
 ---
 
@@ -29,11 +31,20 @@ graph TD
 
 ## ✨ Features
 
-- **Role-Based Access Control (RBAC)**: Secure access tailored for Instructors and Administrators via JWT tokens.
-- **Participant Management**: Dynamic cross-list access (e.g., specific instructors managing children's animation lists).
-- **Automated Email Notifications**: Integration with the `Resend` API for transactional emails and registration confirmations.
+### 👨‍🏫 Instructor & Account Management
+- **Role-Based Access Control (RBAC)**: Secure access tailored specifically for Instructors and Administrators via JWT tokens.
+- **Granular Instructor Profiles**: Each instructor has a dedicated account with access strictly limited to their assigned classes.
+- **Cross-List Permissions**: Advanced logic allows designated instructors (e.g., animation coordinators) to access specialized cross-lists while maintaining the security of primary climbing lists.
+
+### 📅 Class Calendar & Scheduling
+- **Dynamic Registration Schedules**: Automated class slots available for sign-ups based on day of the week, instructor availability, and class type (e.g., beginner, advanced, children's animations).
+- **Attendance Tracking**: Real-time participant list management allowing instructors to quickly check in students directly from their mobile devices during classes.
+- **Capacity Control**: Automatic caps on class sizes to prevent overbooking, ensuring a safe climbing environment.
+
+### 🔒 Security & Operations
+- **Automated Email Notifications**: Integration with the `Resend` API for transactional emails, registration confirmations, and important schedule changes.
 - **Security Hardened**: Protected against common web vulnerabilities via `helmet`, `express-rate-limit`, and data validation (`validator`).
-- **Server-Side Rendering**: Fast, SEO-friendly, and accessible views rendered via EJS.
+- **Server-Side Rendering**: Fast, SEO-friendly, and accessible views rendered natively via EJS.
 - **Containerized**: Fully Dockerized for instant, reproducible deployments across any environment.
 
 ---
