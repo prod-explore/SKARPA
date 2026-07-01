@@ -1,6 +1,10 @@
 <div align="center">
   <h1>🧗Fantastyczne Wspinanie</h1>
   <p><strong>Climbing Class Registration & Management System</strong></p>
+
+  [![Build Status](https://github.com/prod-explore/SKARPA/actions/workflows/ci.yml/badge.svg)](https://github.com/prod-explore/SKARPA/actions)
+  [![Node.js](https://img.shields.io/badge/Node.js-18.x-green.svg)](https://nodejs.org/)
+  [![SQLite](https://img.shields.io/badge/SQLite-Fast-003B57.svg)](https://www.sqlite.org/)
 </div>
 
 ## 📌 Overview
