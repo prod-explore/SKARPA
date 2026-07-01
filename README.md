@@ -5,7 +5,7 @@
 
 ## 📌 Overview
 
-**SKARPA** is a secure, lightweight, and fast web application designed to manage registrations and attendance for climbing classes ("Fantastyczne Wspinanie"). Built as part of a structured program, it provides instructors with powerful tools to manage participant lists while offering a seamless registration experience for students and parents.
+**Fantastyczne Wspinanie** is a secure, lightweight, and fast web application designed to manage registrations and attendance for climbing classes. Built as part of a structured program, it provides instructors with powerful tools to manage participant lists while offering a seamless registration experience for students and parents.
 
 ---
 
@@ -90,5 +90,5 @@ The application will be exposed on the port defined in your `docker-compose.yml`
 
 ---
 <div align="center">
-  <i>Developed for Skarpa Bytom - Fantastyczne Wspinanie.</i>
+  <i>Developed for Fantastyczne Wspinanie.</i>
 </div>
