@@ -19,7 +19,8 @@ const envAdmins = process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || 'explor
 const ADMIN_EMAILS = envAdmins.split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
 
 // Upewnij się, że konto admina istnieje i ma flagę is_admin=1
-function ensureAdminAccount(email) {
+function ensureAdminAccount(rawEmail) {
+  const email = validator.normalizeEmail(rawEmail) || rawEmail.toLowerCase();
   let adminUser = UserModel.findByEmail(email);
   if (!adminUser) {
     UserModel.create(email, 'Admin', 'Zajęcia');
@@ -36,7 +37,8 @@ function ensureAdminAccount(email) {
 ADMIN_EMAILS.forEach(ensureAdminAccount);
 
 // Inicjalizuj konta instruktorów
-function ensureInstructorAccount(email, firstName) {
+function ensureInstructorAccount(rawEmail, firstName) {
+  const email = validator.normalizeEmail(rawEmail) || rawEmail.toLowerCase();
   let instructorUser = UserModel.findByEmail(email);
   if (!instructorUser) {
     UserModel.create(email, firstName, 'Instruktor');
