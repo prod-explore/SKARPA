@@ -33,6 +33,14 @@ graph TD
 
 ---
 
+## 🧠 Key Decisions
+
+- **Why SQLite over PostgreSQL/MySQL?**: The system is designed as a single-tenant deployment for one climbing facility. Using `better-sqlite3` provides ultra-fast, synchronous data access without network overhead (TCP/IP). With WAL (Write-Ahead Logging) mode enabled, it easily handles the required read/write concurrency while eliminating the need to manage and maintain a separate database server.
+- **Why Server-Side Rendering (EJS) over a SPA?**: The application consists primarily of complex registration forms, attendance lists, and schedules. SSR significantly reduced time-to-market for a solo developer by removing the overhead of building and maintaining a separate REST API and frontend state management. Furthermore, SSR ensures an immediate "First Contentful Paint," which is critical for instructors and parents accessing the site on mobile devices within climbing gyms where internet coverage is often poor.
+- **Schema Evolution (Iterative Development)**: The data model evolved continuously alongside business requirements. Major pivots included implementing Role-Based Access Control (RBAC) to separate admin/instructor views, adding age categories and parental consent workflows for minors, and restructuring the class schedule tables (`max_child_spots`, `child_instructor`) to support a unique "Dual Capacity" system where adult classes run parallel to dedicated children's animations.
+
+---
+
 ## ✨ Features
 
 ### 👨‍🏫 Instructor & Account Management
