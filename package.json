@@ -4,7 +4,8 @@
   "description": "System rejestracji na zajęcia wspinaczkowe — Fantastyczne Wspinanie (projekt UE)",
   "main": "src/app.js",
   "scripts": {
-    "start": "node src/app.js"
+    "start": "node src/app.js",
+    "test": "node --experimental-vm-modules node_modules/.bin/jest --testPathPattern=src/__tests__"
   },
   "dependencies": {
     "express": "^4.18.2",
@@ -19,5 +20,8 @@
     "validator": "^13.11.0",
     "morgan": "^1.10.0",
     "compression": "^1.7.4"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
   }
 }

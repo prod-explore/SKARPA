@@ -61,6 +61,102 @@ graph TD
 
 ---
 
+## 🗄️ Database Schema (ERD)
+
+```mermaid
+erDiagram
+    users {
+        INTEGER id PK
+        TEXT email UK
+        TEXT first_name
+        TEXT last_name
+        TEXT age_category
+        INTEGER is_verified
+        INTEGER consent_requested
+        INTEGER is_admin
+        INTEGER is_instructor
+        TEXT birth_date
+        INTEGER marketing_consent
+        DATETIME created_at
+        DATETIME last_login
+    }
+    magic_tokens {
+        INTEGER id PK
+        INTEGER user_id FK
+        TEXT token UK
+        DATETIME expires_at
+        INTEGER used
+        DATETIME created_at
+    }
+    classes {
+        INTEGER id PK
+        TEXT name
+        TEXT description
+        DATETIME start_time
+        INTEGER duration_min
+        TEXT class_type
+        INTEGER max_spots
+        INTEGER max_child_spots
+        TEXT instructor
+        TEXT child_instructor
+        TEXT category
+        TEXT color
+        INTEGER is_cancelled
+        INTEGER is_archived
+        DATETIME created_at
+    }
+    bookings {
+        INTEGER id PK
+        INTEGER class_id FK
+        INTEGER user_id FK
+        DATETIME created_at
+    }
+    participants {
+        INTEGER id PK
+        INTEGER booking_id FK
+        TEXT first_name
+        TEXT last_name
+        TEXT age_category
+        INTEGER is_main
+        INTEGER age
+        INTEGER child_age
+    }
+    qr_scans {
+        INTEGER id PK
+        TEXT ip
+        TEXT user_agent
+        DATETIME scanned_at
+    }
+    schema_migrations {
+        INTEGER id PK
+        TEXT filename UK
+        DATETIME applied_at
+    }
+
+    users ||--o{ magic_tokens  : "has"
+    users ||--o{ bookings      : "creates"
+    classes ||--o{ bookings    : "contains"
+    bookings ||--o{ participants : "groups"
+```
+
+---
+
+## 📦 Schema Migrations
+
+The schema evolves through numbered SQL files. To add a change, create a new file — it will be applied automatically on next startup:
+
+```
+src/migrations/
+├── runner.js                   ← migration runner (tracks history, atomic transactions)
+├── 001_init_schema.sql
+├── 002_user_verification.sql
+├── 003_instructor_role.sql
+├── 004_family_classes.sql
+└── 005_class_color_archive.sql
+```
+
+---
+
 ## 🚀 Getting Started
 
 ### Prerequisites
@@ -99,6 +195,25 @@ graph TD
 docker-compose up --build -d
 ```
 The application will be exposed on the port defined in your `docker-compose.yml`.
+
+---
+
+## 🧪 Tests
+
+```bash
+npm test
+```
+
+Integration tests use an in-memory SQLite database — covers bookings, participant counts, duplicate prevention, cascade deletes, and spot limits.
+
+---
+
+## 🤖 CI/CD Pipeline
+
+The project uses **GitHub Actions** for continuous integration. Every push and Pull Request to the `main` branch triggers an automated pipeline that:
+1. Sets up the environment using cached dependencies (faster builds).
+2. Runs the full integration test suite (`npm test`) on an isolated in-memory database.
+3. Ensures code stability before any deployment.
 
 ---
 

@@ -2,13 +2,15 @@
  * database.js — Inicjalizacja bazy danych SQLite i modele danych
  * Używamy better-sqlite3 (synchroniczny, idealny do Dockera bez zewnętrznych usług)
  *
- * v2 — Kategorie wiekowe, podwójne limity miejsc, zgody rodzicielskie
+ * Migracje obsługiwane przez wersjonowany runner: src/migrations/runner.js
+ * Aby dodać zmianę schematu: utwórz kolejny plik 00N_opis.sql w src/migrations/
  */
 
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 const { calculateAge } = require('../utils/age');
+const { runMigrations } = require('../migrations/runner');
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, '../../data/skarpa.db');
 
@@ -40,141 +42,13 @@ function getMondayStr() {
 function initDatabase() {
   db = new Database(DB_PATH);
 
-  // Włącz WAL mode dla lepszej wydajności przy równoczesnych odczytach
+  // WAL mode — lepsza wydajność przy równoczesnych odczytach
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
 
-  db.exec(`
-    -- Tabela użytkowników
-    -- age_category: 'adult' lub 'child'
-    -- is_verified: 1 (dorosły od razu, dziecko po zatwierdzeniu zgody)
-    -- consent_requested: 1 gdy dziecko poprosiło o weryfikację
-    CREATE TABLE IF NOT EXISTS users (
-      id                 INTEGER PRIMARY KEY AUTOINCREMENT,
-      email              TEXT    UNIQUE NOT NULL,
-      first_name         TEXT,
-      last_name          TEXT,
-      age_category       TEXT    DEFAULT NULL,
-      is_verified        INTEGER DEFAULT 0,
-      consent_requested  INTEGER DEFAULT 0,
-      is_admin           INTEGER DEFAULT 0,
-      is_instructor      INTEGER DEFAULT 0,
-      birth_date         TEXT,
-      marketing_consent  INTEGER DEFAULT 0,
-      created_at         DATETIME DEFAULT CURRENT_TIMESTAMP,
-      last_login         DATETIME
-    );
-
-    -- Tabela tokenów magic link (jednorazowe, wygasające)
-    CREATE TABLE IF NOT EXISTS magic_tokens (
-      id         INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id    INTEGER NOT NULL,
-      token      TEXT    UNIQUE NOT NULL,
-      expires_at DATETIME NOT NULL,
-      used       INTEGER DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-    );
-
-    -- Tabela zajęć
-    -- class_type: 'adult_only' lub 'adult_and_child'
-    -- max_spots: limit dorosłych
-    -- max_child_spots: limit dzieci (tylko dla 'adult_and_child')
-    -- child_instructor: instruktor animacji dla dzieci
-    CREATE TABLE IF NOT EXISTS classes (
-      id               INTEGER PRIMARY KEY AUTOINCREMENT,
-      name             TEXT    NOT NULL,
-      description      TEXT,
-      start_time       DATETIME NOT NULL,
-      duration_min     INTEGER DEFAULT 90,
-      class_type       TEXT    DEFAULT 'adult_only',
-      max_spots        INTEGER NOT NULL,
-      max_child_spots  INTEGER DEFAULT 0,
-      instructor       TEXT,
-      child_instructor TEXT,
-      category         TEXT    DEFAULT 'adults',
-      created_at       DATETIME DEFAULT CURRENT_TIMESTAMP,
-      is_cancelled     INTEGER DEFAULT 0
-    );
-
-    -- Tabela rezerwacji (jedna rezerwacja = jeden "zapis" przez użytkownika)
-    CREATE TABLE IF NOT EXISTS bookings (
-      id         INTEGER PRIMARY KEY AUTOINCREMENT,
-      class_id   INTEGER NOT NULL,
-      user_id    INTEGER NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(class_id, user_id),
-      FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
-      FOREIGN KEY (user_id)  REFERENCES users(id)   ON DELETE CASCADE
-    );
-
-    -- Tabela uczestników (booking może zawierać wiele osób)
-    -- age_category: 'adult' lub 'child' — do rozliczania pul
-    CREATE TABLE IF NOT EXISTS participants (
-      id           INTEGER PRIMARY KEY AUTOINCREMENT,
-      booking_id   INTEGER NOT NULL,
-      first_name   TEXT    NOT NULL,
-      last_name    TEXT    NOT NULL,
-      age_category TEXT    DEFAULT 'adult',
-      is_main      INTEGER DEFAULT 0,
-      age          INTEGER,
-      child_age    INTEGER,
-      FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE
-    );
-
-    -- Tabela skanów QR z ulotki
-    CREATE TABLE IF NOT EXISTS qr_scans (
-      id         INTEGER PRIMARY KEY AUTOINCREMENT,
-      ip         TEXT,
-      user_agent TEXT,
-      scanned_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-
-    -- Indeksy dla wydajności
-    CREATE INDEX IF NOT EXISTS idx_classes_start_time ON classes(start_time);
-    CREATE INDEX IF NOT EXISTS idx_bookings_class_id  ON bookings(class_id);
-    CREATE INDEX IF NOT EXISTS idx_bookings_user_id   ON bookings(user_id);
-    CREATE INDEX IF NOT EXISTS idx_magic_tokens_token ON magic_tokens(token);
-  `);
-
-  // ============================================================
-  // Migracje — dodaj brakujące kolumny do istniejących tabel
-  // ============================================================
-  const migrations = [
-    // users
-    { table: 'users', column: 'age_category',      sql: "ALTER TABLE users ADD COLUMN age_category TEXT DEFAULT NULL" },
-    { table: 'users', column: 'is_verified',       sql: "ALTER TABLE users ADD COLUMN is_verified INTEGER DEFAULT 0" },
-    { table: 'users', column: 'consent_requested', sql: "ALTER TABLE users ADD COLUMN consent_requested INTEGER DEFAULT 0" },
-    { table: 'users', column: 'is_instructor',     sql: "ALTER TABLE users ADD COLUMN is_instructor INTEGER DEFAULT 0" },
-    { table: 'users', column: 'birth_date',        sql: "ALTER TABLE users ADD COLUMN birth_date TEXT" },
-    { table: 'users', column: 'marketing_consent', sql: "ALTER TABLE users ADD COLUMN marketing_consent INTEGER DEFAULT 0" },
-    // classes
-    { table: 'classes', column: 'class_type',       sql: "ALTER TABLE classes ADD COLUMN class_type TEXT DEFAULT 'adult_only'" },
-    { table: 'classes', column: 'max_child_spots',  sql: "ALTER TABLE classes ADD COLUMN max_child_spots INTEGER DEFAULT 0" },
-    { table: 'classes', column: 'child_instructor', sql: "ALTER TABLE classes ADD COLUMN child_instructor TEXT" },
-    // participants
-    { table: 'participants', column: 'age_category', sql: "ALTER TABLE participants ADD COLUMN age_category TEXT DEFAULT 'adult'" },
-    { table: 'participants', column: 'child_age', sql: 'ALTER TABLE participants ADD COLUMN child_age INTEGER' },
-    { table: 'participants', column: 'age', sql: 'ALTER TABLE participants ADD COLUMN age INTEGER' },
-    // classes
-    { table: 'classes', column: 'color', sql: "ALTER TABLE classes ADD COLUMN color TEXT DEFAULT '#6366f1'" },
-    { table: 'classes', column: 'is_archived', sql: "ALTER TABLE classes ADD COLUMN is_archived INTEGER DEFAULT 0" },
-  ];
-
-  for (const m of migrations) {
-    try {
-      const cols = db.pragma(`table_info(${m.table})`);
-      const exists = cols.some(c => c.name === m.column);
-      if (!exists) {
-        db.exec(m.sql);
-        console.log(`  ↳ Migracja: dodano ${m.table}.${m.column}`);
-      }
-    } catch (e) {
-      // Kolumna już istnieje lub inna sytuacja — ignoruj
-    }
-  }
-
-
+  // Uruchom wersjonowany system migracji
+  // Każda zmiana schematu = nowy plik src/migrations/00N_opis.sql
+  runMigrations(db);
 
   console.log('✅ Baza danych SQLite zainicjalizowana:', DB_PATH);
 
@@ -182,7 +56,7 @@ function initDatabase() {
   const archived = db.prepare(
     "UPDATE classes SET is_archived = 1 WHERE start_time < ? AND is_archived = 0"
   ).run(getMondayStr());
-  
+
   if (archived.changes > 0) {
     console.log(`  ↳ Czyszczenie: zarchiwizowano automatycznie ${archived.changes} zajęć z poprzednich tygodni.`);
   }
