@@ -171,7 +171,8 @@ router.post('/profile/complete', requireAuth, (req, res) => {
     nextUrl = '/dashboard';
   }
   
-  if (!terms_accepted) {
+  const termsAccepted = req.body.terms_accepted === 'on';
+  if (!termsAccepted) {
     return res.render('user/complete-profile', {
       title: 'Uzupełnij profil',
       next: nextUrl || '/dashboard',
@@ -195,6 +196,16 @@ router.post('/profile/complete', requireAuth, (req, res) => {
       error: 'Nieprawidłowa data urodzenia.'
     });
   }
+  // Data nie może być w przyszłości ani dawniej niż 120 lat temu
+  const now120ago = new Date();
+  now120ago.setFullYear(now120ago.getFullYear() - 120);
+  if (birthDateObj > new Date() || birthDateObj < now120ago) {
+    return res.render('user/complete-profile', {
+      title: 'Uzupełnij profil',
+      next: nextUrl || '/dashboard',
+      error: 'Nieprawidłowa data urodzenia. Podaj rzeczywistą datę.'
+    });
+  }
 
   const age = calculateAge(birthDate);
 
@@ -209,7 +220,14 @@ router.post('/profile/complete', requireAuth, (req, res) => {
   // Od 16 lat w górę — zawsze kategoria 'adult' (pula miejsc dla dorosłych)
   const ageCategory = 'adult';
 
-  UserModel.updateProfile(req.user.id, firstName.trim(), lastName.trim(), ageCategory, birthDate, marketing_accepted === 'on');
+  UserModel.updateProfile(
+    req.user.id,
+    firstName.trim().slice(0, 50),
+    lastName.trim().slice(0, 50),
+    ageCategory,
+    birthDate,
+    marketing_accepted === 'on'
+  );
 
   // Odśwież dane w cookie
   const updatedUser = UserModel.findById(req.user.id);

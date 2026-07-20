@@ -6,11 +6,49 @@
 const express = require('express');
 const router = express.Router();
 
-const { ClassModel, BookingModel, UserModel, QrScanModel } = require('../models/database');
+const { ClassModel, BookingModel, UserModel, QrScanModel, WaitingListModel } = require('../models/database');
 const { requireAuth, requireProfile } = require('../middleware/auth');
-const { sendMagicLink } = require('../services/emailService');
+const { sendMagicLink, sendWaitingListPromotedEmail } = require('../services/emailService');
 const { apiLimiter } = require('../middleware/security');
 const { calculateAge } = require('../utils/age');
+
+// ============================================================
+// Funkcja pomocnicza: przenieś pierwszą osobę z listy rezerwowej
+// (identyczna logika jak w admin.routes.js)
+// ============================================================
+async function checkAndPromoteWaitingList(classId) {
+  try {
+    const classData = ClassModel.getById(classId);
+    if (!classData || !classData.waiting_list_enabled) return;
+
+    const spots = BookingModel.getSpotCounts(classId);
+    const adultSpotsLeft = classData.max_spots - spots.adult_taken;
+    if (adultSpotsLeft <= 0) return;
+
+    const first = WaitingListModel.getFirst(classId);
+    if (!first) return;
+
+    BookingModel.createWithParticipants(first.user_id, classId, [{
+      firstName:   first.first_name,
+      lastName:    first.last_name,
+      ageCategory: 'adult',
+      isMain:      true,
+      age:         null
+    }]);
+
+    WaitingListModel.remove(first.user_id, classId);
+
+    const classDate = new Date(classData.start_time).toLocaleDateString('pl-PL', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+    const dashboardLink = `${process.env.APP_URL || 'https://skarpabytom.pl'}/dashboard`;
+    await sendWaitingListPromotedEmail(first.email, first.first_name, classData.name, classDate, dashboardLink);
+    console.log(`✅ Przeniesiono ${first.email} z listy rezerwowej na główną (klasa ${classId})`);
+  } catch (err) {
+    console.error('Błąd checkAndPromoteWaitingList (user):', err);
+  }
+}
 
 /** Wiek dziecka przy zapisie (7–17 lat), wymagany dla każdego uczestnika z kategorią „dziecko”. */
 function parseChildAge(raw) {
@@ -89,7 +127,9 @@ router.get('/', (req, res) => {
 // GET /calendar — Publiczny kalendarz zajęć
 // ============================================================
 router.get('/calendar', (req, res) => {
-  const weekOffset = parseInt(req.query.week || '0', 10);
+  let weekOffset = parseInt(req.query.week || '0', 10);
+  if (isNaN(weekOffset)) weekOffset = 0;
+  weekOffset = Math.max(-52, Math.min(52, weekOffset));
   const { weekStart, weekEnd } = getWeekBounds(weekOffset);
 
   const allClasses = ClassModel.getUpcoming();
@@ -131,7 +171,9 @@ router.post('/consent/request', requireAuth, (req, res) => {
 // GET /dashboard — Panel użytkownika
 // ============================================================
 router.get('/dashboard', requireAuth, requireProfile, (req, res) => {
-  const weekOffset = parseInt(req.query.week || '0', 10);
+  let weekOffset = parseInt(req.query.week || '0', 10);
+  if (isNaN(weekOffset)) weekOffset = 0;
+  weekOffset = Math.max(-52, Math.min(52, weekOffset));
   const { weekStart, weekEnd } = getWeekBounds(weekOffset);
 
   const allUpcoming = ClassModel.getUpcoming();
@@ -168,12 +210,16 @@ router.get('/dashboard', requireAuth, requireProfile, (req, res) => {
   const userAge = calculateAge(req.user.birth_date);
   const isMinor = userAge !== null && userAge < 18;
 
+  // Lista rezerwowa użytkownika
+  const waitlistBookings = WaitingListModel.getUserWaitlistBookings(req.user.id);
+
   res.render('user/dashboard', {
     title: 'Mój panel',
     user: req.user,
     isMinor,
     classes: classesWithStatus,
     bookings: bookingsWithParticipants,
+    waitlistBookings,
     weekClasses, weekStart, weekEnd, weekOffset,
     START_HOUR, END_HOUR, SLOT_MIN
   });
@@ -188,7 +234,11 @@ router.get('/book/:classId', requireAuth, requireProfile, (req, res) => {
     return res.redirect('/dashboard?error=Twoje+konto+wymaga+weryfikacji+zgody+rodzica+przed+zapisami');
   }
 
-  const classData = ClassModel.getById(req.params.classId);
+  const classId = parseInt(req.params.classId, 10);
+  if (!Number.isInteger(classId) || classId < 1) {
+    return res.redirect('/calendar?error=Nieprawidłowe+ID+zajęć');
+  }
+  const classData = ClassModel.getById(classId);
 
   if (!classData) {
     return res.redirect('/calendar?error=Zajęcia+nie+istnieją');
@@ -209,9 +259,17 @@ router.get('/book/:classId', requireAuth, requireProfile, (req, res) => {
 
   // Sprawdź, czy są wolne miejsca w puli dorosłych
   if (adultSpotsLeft <= 0) {
+    // Brak miejsc — sprawdź czy lista rezerwowa jest włączona
+    const waitingListEnabled = !!classData.waiting_list_enabled;
+    const waitingCount = waitingListEnabled ? WaitingListModel.countByClass(classData.id) : 0;
+    const waitingSpotsLeft = waitingListEnabled ? (classData.max_waiting_spots - waitingCount) : 0;
+    const userOnWaitlist = waitingListEnabled ? !!WaitingListModel.findByUserAndClass(req.user.id, classData.id) : false;
+
     return res.render('user/book', {
       title: 'Zapis na zajęcia', classData, user: req.user,
-      error: 'Brak wolnych miejsc na te zajęcia.', notOpen: false, full: true
+      error: null, notOpen: false, full: true,
+      waitingListEnabled, waitingSpotsLeft, userOnWaitlist,
+      waitingCount, adultSpotsLeft: 0, childSpotsLeft
     });
   }
 
@@ -229,7 +287,11 @@ router.get('/book/:classId', requireAuth, requireProfile, (req, res) => {
     user: req.user,
     error: null,
     notOpen: false,
-    full: false
+    full: false,
+    waitingListEnabled: !!classData.waiting_list_enabled,
+    waitingSpotsLeft: 0,
+    userOnWaitlist: false,
+    waitingCount: WaitingListModel.countByClass(classData.id)
   });
 });
 
@@ -242,10 +304,14 @@ router.post('/book/:classId', requireAuth, requireProfile, apiLimiter, async (re
     return res.redirect('/dashboard?error=Konto+wymaga+weryfikacji');
   }
 
-  const classData = ClassModel.getById(req.params.classId);
+  const classId = parseInt(req.params.classId, 10);
+  if (!Number.isInteger(classId) || classId < 1) {
+    return res.redirect('/calendar?error=Nieprawid\u0142owe+ID+zaj\u0119\u0107');
+  }
+  const classData = ClassModel.getById(classId);
 
   if (!classData || classData.is_cancelled) {
-    return res.redirect('/calendar?error=Nieprawidłowe+zajęcia');
+    return res.redirect('/calendar?error=Nieprawid\u0142owe+zaj\u0119cia');
   }
 
   // Podwójna weryfikacja blokady czasowej (server-side)
@@ -257,6 +323,32 @@ router.post('/book/:classId', requireAuth, requireProfile, apiLimiter, async (re
   const existingBooking = BookingModel.findByUserAndClass(req.user.id, classData.id);
   if (existingBooking) {
     return res.redirect('/dashboard?info=Jesteś+już+zapisany');
+  }
+
+  // Obsługa zapisu na listę rezerwową
+  const action = typeof req.body.action === 'string' ? req.body.action : '';
+  if (action === 'waitlist') {
+    if (!classData.waiting_list_enabled) {
+      return res.redirect(`/book/${classData.id}?error=Lista+rezerwowa+nie+jest+włączona`);
+    }
+    // Sprawdź czy już na liście rezerwowej
+    const alreadyOnWaitlist = WaitingListModel.findByUserAndClass(req.user.id, classData.id);
+    if (alreadyOnWaitlist) {
+      return res.redirect('/dashboard?info=Jesteś+już+na+liście+rezerwowej+tych+zajęć');
+    }
+    // Sprawdź czy lista nie jest pełna
+    const waitingCount = WaitingListModel.countByClass(classData.id);
+    if (waitingCount >= classData.max_waiting_spots) {
+      return res.redirect(`/book/${classData.id}?error=Lista+rezerwowa+jest+pełna`);
+    }
+    // Sprawdź czy są jeszcze wolne miejsca (równoległe wyścigi)
+    const freshSpots = BookingModel.getSpotCounts(classData.id);
+    if (classData.max_spots - freshSpots.adult_taken > 0) {
+      // Miejsce się zwolniło — zapisz bezpośrednio na główną
+      return res.redirect(`/book/${classData.id}`);
+    }
+    WaitingListModel.add(req.user.id, classData.id);
+    return res.redirect('/dashboard?success=Zapisano+na+listę+rezerwową.+Poinformujemy+Cię+gdy+zwolni+się+miejsce.');
   }
 
   const renderBookError = (errorMsg) => {
@@ -307,15 +399,15 @@ router.post('/book/:classId', requireAuth, requireProfile, apiLimiter, async (re
   }
 
   for (let i = 0; i < extraFirstNames.length; i++) {
-    const fn = extraFirstNames[i]?.trim();
-    const ln = extraLastNames[i]?.trim();
+    const fn = String(extraFirstNames[i] || '').trim().slice(0, 50);
+    const ln = String(extraLastNames[i] || '').trim().slice(0, 50);
     const rawAge = extraAges[i];
     if (fn && ln) {
       if (rawAge === undefined || rawAge === null || String(rawAge).trim() === '') {
         return renderBookError('Podaj wiek (w latach) dla każdej dopisywanej osoby.');
       }
       const ageVal = parseInt(String(rawAge).trim(), 10);
-      if (!Number.isInteger(ageVal) || ageVal < 0 || ageVal > 120) {
+      if (!Number.isInteger(ageVal) || ageVal < 1 || ageVal > 120) {
         return renderBookError('Wiek dopisywanej osoby musi być prawidłową liczbą lat.');
       }
 
@@ -426,7 +518,11 @@ router.post('/book/:classId', requireAuth, requireProfile, apiLimiter, async (re
 // POST /cancel/:classId — Odwołanie zapisu
 // ============================================================
 router.post('/cancel/:classId', requireAuth, (req, res) => {
-  const classData = ClassModel.getById(req.params.classId);
+  const classId = parseInt(req.params.classId, 10);
+  if (!Number.isInteger(classId) || classId < 1) {
+    return res.redirect('/dashboard?error=Nieprawidłowe+ID+zajęć');
+  }
+  const classData = ClassModel.getById(classId);
 
   if (!classData) {
     return res.redirect('/dashboard?error=Zajęcia+nie+istnieją');
@@ -440,6 +536,10 @@ router.post('/cancel/:classId', requireAuth, (req, res) => {
   }
 
   BookingModel.cancelByUser(req.user.id, classData.id);
+
+  // Sprawdź i przenieś pierwszą osobę z listy rezerwowej (async)
+  checkAndPromoteWaitingList(classData.id);
+
   res.redirect('/dashboard?success=Zapis+odwołany');
 });
 
@@ -447,7 +547,11 @@ router.post('/cancel/:classId', requireAuth, (req, res) => {
 // POST /cancel/:classId/participants/:participantId — Odwołanie pojedynczego uczestnika
 // ============================================================
 router.post('/cancel/:classId/participants/:participantId', requireAuth, (req, res) => {
-  const { classId, participantId } = req.params;
+  const classId       = parseInt(req.params.classId, 10);
+  const participantId = parseInt(req.params.participantId, 10);
+  if (!Number.isInteger(classId) || classId < 1 || !Number.isInteger(participantId) || participantId < 1) {
+    return res.redirect('/dashboard?error=Nieprawidłowe+parametry+żądania');
+  }
   const classData = ClassModel.getById(classId);
 
   if (!classData) {
@@ -462,7 +566,7 @@ router.post('/cancel/:classId/participants/:participantId', requireAuth, (req, r
   }
 
   const participant = BookingModel.getParticipantWithContext(participantId);
-  if (!participant || participant.class_id !== parseInt(classId) || participant.user_id !== req.user.id) {
+  if (!participant || participant.class_id !== classId || participant.user_id !== req.user.id) {
     return res.redirect('/dashboard?error=Nieprawidłowy+uczestnik');
   }
 
@@ -474,7 +578,32 @@ router.post('/cancel/:classId/participants/:participantId', requireAuth, (req, r
     BookingModel.deleteBooking(bookingId);
   }
 
+  // Sprawdź i przenieś pierwszą osobę z listy rezerwowej (async)
+  checkAndPromoteWaitingList(classId);
+
   res.redirect(`/dashboard?success=Uczestnik+${encodeURIComponent(participant.first_name + ' ' + participant.last_name)}+został+wypisany`);
+});
+
+// ============================================================
+// POST /waitlist/cancel/:classId — Wypisanie z listy rezerwowej
+// ============================================================
+router.post('/waitlist/cancel/:classId', requireAuth, (req, res) => {
+  const classId = parseInt(req.params.classId, 10);
+  if (!Number.isInteger(classId) || classId < 1) {
+    return res.redirect('/dashboard?error=Nieprawidłowe+ID+zajęć');
+  }
+  const classData = ClassModel.getById(classId);
+  if (!classData) {
+    return res.redirect('/dashboard?error=Zajęcia+nie+istnieją');
+  }
+
+  const onWaitlist = WaitingListModel.findByUserAndClass(req.user.id, classData.id);
+  if (!onWaitlist) {
+    return res.redirect('/dashboard?error=Nie+jesteś+na+liście+rezerwowej+tych+zajęć');
+  }
+
+  WaitingListModel.remove(req.user.id, classData.id);
+  res.redirect('/dashboard?success=Wypisano+z+listy+rezerwowej');
 });
 
 // ============================================================

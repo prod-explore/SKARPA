@@ -98,10 +98,45 @@
                     <div class="locked-state">
                       <div class="locked-icon">😞</div>
                       <h2>Brak wolnych miejsc</h2>
-                      <p>
-                        <%= error %>
-                      </p>
-                      <a href="/calendar" class="btn btn--primary">Znajdź inne terminy</a>
+
+                      <% if (typeof waitingListEnabled !== 'undefined' && waitingListEnabled) { %>
+                        <% if (typeof userOnWaitlist !== 'undefined' && userOnWaitlist) { %>
+                          <!-- Użytkownik już na liście rezerwowej -->
+                          <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px 20px;margin:16px 0;text-align:left;">
+                            <p style="margin:0 0 6px;font-weight:700;color:#15803d;">✅ Jesteś na liście rezerwowej</p>
+                            <p style="margin:0;font-size:14px;color:#555;">Gdy zwolni się miejsce, zostaniesz automatycznie przeniesiony na listę główną i otrzymasz e-mail z potwierdzeniem.</p>
+                          </div>
+                          <form action="/waitlist/cancel/<%= classData.id %>" method="POST" style="margin-top:12px;">
+                            <button type="submit" class="btn btn--outline"
+                                    onclick="return confirm('Na pewno chcesz wypisać się z listy rezerwowej?')">
+                              Wypisz się z listy rezerwowej
+                            </button>
+                          </form>
+                        <% } else if (typeof waitingSpotsLeft !== 'undefined' && waitingSpotsLeft > 0) { %>
+                          <!-- Wolne miejsca na liście rezerwowej -->
+                          <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:16px 20px;margin:16px 0;text-align:left;">
+                            <p style="margin:0 0 6px;font-weight:700;color:#92400e;">🕐 Lista rezerwowa dostępna</p>
+                            <p style="margin:0;font-size:14px;color:#555;">Zapisz się na listę rezerwową. Gdy ktoś zrezygnuje, automatycznie zajmiesz jego miejsce i dostaniesz powiadomienie e-mailem.</p>
+                            <p style="margin:8px 0 0;font-size:13px;color:#777;">Osób czekających: <strong><%= typeof waitingCount !== 'undefined' ? waitingCount : 0 %></strong> / miejsc na liście: <strong><%= classData.max_waiting_spots %></strong></p>
+                          </div>
+                          <form action="/book/<%= classData.id %>" method="POST">
+                            <input type="hidden" name="action" value="waitlist">
+                            <button type="submit" class="btn btn--primary">
+                              🕐 Zapisz się na listę rezerwową
+                            </button>
+                          </form>
+                          <a href="/calendar" class="btn btn--outline" style="margin-top:8px;">Znajdź inne terminy</a>
+                        <% } else { %>
+                          <!-- Lista rezerwowa pełna -->
+                          <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:16px 20px;margin:16px 0;text-align:left;">
+                            <p style="margin:0;font-weight:700;color:#dc2626;">Lista rezerwowa jest również pełna.</p>
+                          </div>
+                          <a href="/calendar" class="btn btn--primary">Znajdź inne terminy</a>
+                        <% } %>
+                      <% } else { %>
+                        <p>Wszystkie miejsca są zajęte.</p>
+                        <a href="/calendar" class="btn btn--primary">Znajdź inne terminy</a>
+                      <% } %>
                     </div>
 
                     <% } else { %>
@@ -253,7 +288,7 @@
             const ageBlock = `
         <div class="form-group">
           <label class="form-label">Wiek (lata) *</label>
-          <input type="number" name="extraAge" class="form-input" min="0" max="120" inputmode="numeric" placeholder="np. 25" required>
+          <input type="number" name="extraAge" class="form-input" min="1" max="120" inputmode="numeric" placeholder="np. 25" required>
         </div>
       `;
 
@@ -265,11 +300,11 @@
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Imię *</label>
-          <input type="text" name="extraFirstName" class="form-input" placeholder="Imię" required>
+          <input type="text" name="extraFirstName" class="form-input" placeholder="Imię" required maxlength="50">
         </div>
         <div class="form-group">
           <label class="form-label">Nazwisko *</label>
-          <input type="text" name="extraLastName" class="form-input" placeholder="Nazwisko" required>
+          <input type="text" name="extraLastName" class="form-input" placeholder="Nazwisko" required maxlength="50">
         </div>
         ${ageBlock}
       </div>

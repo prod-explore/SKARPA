@@ -143,6 +143,41 @@
       <% }); %>
     </div>
 
+    <% if (typeof waitingList !== 'undefined' && waitingList && waitingList.length > 0) { %>
+    <!-- Lista rezerwowa -->
+    <div class="admin-section no-print">
+      <h2>🕐 Lista rezerwowa (<%= waitingList.length %>)</h2>
+      <p style="font-size:14px;color:#666;margin-bottom:12px;">
+        Osoby poniżej zostaną automatycznie przeniesione na listę główną gdy zwolni się miejsce (kolejność według daty zapisu).
+      </p>
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Imię i Nazwisko</th>
+            <th>E-mail</th>
+            <th>Data zapisu na listę</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% waitingList.forEach((w, idx) => { %>
+            <tr>
+              <td><%= idx + 1 %></td>
+              <td><strong><%= w.first_name %> <%= w.last_name %></strong></td>
+              <td><%= w.email %></td>
+              <td><%= new Date(w.created_at).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) %></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+    <% } else if (classData.waiting_list_enabled) { %>
+    <div class="admin-section no-print">
+      <h2>🕐 Lista rezerwowa</h2>
+      <p style="font-size:14px;color:#888;">Nikt nie jest jeszcze na liście rezerwowej.</p>
+    </div>
+    <% } %>
+
   </main>
 </div>
 

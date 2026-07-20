@@ -9,11 +9,52 @@ const express = require('express');
 const router = express.Router();
 const validator = require('validator');
 
-const { ClassModel, BookingModel, UserModel, MagicTokenModel, QrScanModel, getDb } = require('../models/database');
+const { ClassModel, BookingModel, UserModel, MagicTokenModel, QrScanModel, WaitingListModel, getDb } = require('../models/database');
 const { requireAdmin, setAuthCookie, createMagicLink } = require('../middleware/auth');
 const { adminLoginLimiter } = require('../middleware/security');
-const { sendMagicLink, sendParticipantRemovedEmail } = require('../services/emailService');
+const { sendMagicLink, sendParticipantRemovedEmail, sendWaitingListPromotedEmail } = require('../services/emailService');
 const { calculateAge } = require('../utils/age');
+
+// ============================================================
+// Funkcja pomocnicza: przenieś pierwszą osobę z listy rezerwowej
+// na listę główną gdy zwolni się miejsce w puli dorosłych
+// ============================================================
+async function checkAndPromoteWaitingList(classId) {
+  try {
+    const classData = ClassModel.getById(classId);
+    if (!classData || !classData.waiting_list_enabled) return;
+
+    const spots = BookingModel.getSpotCounts(classId);
+    const adultSpotsLeft = classData.max_spots - spots.adult_taken;
+    if (adultSpotsLeft <= 0) return; // Nadal brak miejsc
+
+    const first = WaitingListModel.getFirst(classId);
+    if (!first) return; // Lista rezerwowa pusta
+
+    // Przenieś na listę główną (tylko jako sam uczestnik-dorosły)
+    BookingModel.createWithParticipants(first.user_id, classId, [{
+      firstName:   first.first_name,
+      lastName:    first.last_name,
+      ageCategory: 'adult',
+      isMain:      true,
+      age:         null
+    }]);
+
+    WaitingListModel.remove(first.user_id, classId);
+
+    // Wyślij powiadomienie e-mail
+    const classDate = new Date(classData.start_time).toLocaleDateString('pl-PL', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+    const dashboardLink = `${process.env.APP_URL || 'https://skarpabytom.pl'}/dashboard`;
+    await sendWaitingListPromotedEmail(first.email, first.first_name, classData.name, classDate, dashboardLink);
+    console.log(`✅ Przeniesiono ${first.email} z listy rezerwowej na główną (klasa ${classId})`);
+  } catch (err) {
+    console.error('Błąd checkAndPromoteWaitingList:', err);
+    // Nie przerywamy — to operacja tła
+  }
+}
 
 const envAdmins = process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || 'explore.wrld.rld@gmail.com,wspinanie.ue@gmail.com';
 const ADMIN_EMAILS = envAdmins.split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
@@ -171,7 +212,9 @@ function getWeekBounds(weekOffset) {
 }
 
 router.get('/admin/calendar', requireAdmin, (req, res) => {
-  const weekOffset = parseInt(req.query.week || '0', 10);
+  let weekOffset = parseInt(req.query.week || '0', 10);
+  if (isNaN(weekOffset)) weekOffset = 0;
+  weekOffset = Math.max(-52, Math.min(52, weekOffset));
   const { weekStart, weekEnd } = getWeekBounds(weekOffset);
   const pendingConsents = UserModel.getPendingConsents().length;
 
@@ -209,29 +252,53 @@ router.get('/admin/classes/new', requireAdmin, (req, res) => {
 // POST /admin/classes — Utwórz
 // ============================================================
 router.post('/admin/classes', requireAdmin, (req, res) => {
-  const { name, description, startTime, endTime, classType, maxSpots, maxChildSpots, instructor, childInstructor, color } = req.body;
+  const { name, description, startTime, endTime, classType, maxSpots, maxChildSpots, instructor, childInstructor, color, waitingListEnabled } = req.body;
 
   const instructors = UserModel.getInstructors();
-  if (!name?.trim() || !startTime || !maxSpots) {
-    return res.render('admin/class-form', {
-      title: 'Nowe zajęcia', classData: req.body, user: req.user,
-      error: 'Wymagane: nazwa, data/godzina, max. liczba osób.',
-      instructors
-    });
-  }
+  const renderErr = (msg) => res.render('admin/class-form', {
+    title: 'Nowe zajęcia', classData: req.body, user: req.user, error: msg, instructors
+  });
 
-  const durationMin = endTime && startTime ? Math.max(30, Math.round((new Date(endTime) - new Date(startTime)) / 60000)) : 90;
+  // Nazwa
+  const nameTrimmed = String(name || '').trim().slice(0, 120);
+  if (!nameTrimmed) return renderErr('Wymagana: nazwa zajęć.');
+
+  // Daty
+  const startDate = new Date(startTime);
+  const endDate   = new Date(endTime);
+  if (!startTime || isNaN(startDate.getTime())) return renderErr('Nieprawidłowa data/godzina startu.');
+  if (endTime && isNaN(endDate.getTime()))       return renderErr('Nieprawidłowa data/godzina końca.');
+  if (endTime && endDate <= startDate)            return renderErr('Czas końca musi być po czasie startu.');
+  const durationMin = endTime ? Math.round((endDate - startDate) / 60000) : 90;
+  if (durationMin < 15 || durationMin > 480)     return renderErr('Czas trwania musi wynosić 15 min – 8 godzin.');
+
+  // Liczba miejsc
+  const maxSpotsVal = parseInt(maxSpots, 10);
+  if (!Number.isInteger(maxSpotsVal) || maxSpotsVal < 1 || maxSpotsVal > 200)
+    return renderErr('Maks. uczestników: wartość od 1 do 200.');
+
+  const ct = classType || 'adult_only';
+  const maxChildVal = ct === 'adult_and_child' ? (parseInt(maxChildSpots, 10) || 0) : 0;
+  if (ct === 'adult_and_child' && (maxChildVal < 1 || maxChildVal > 200))
+    return renderErr('Maks. dzieci: wartość od 1 do 200.');
+
+  // Kolor
+  const colorVal = /^#[0-9a-fA-F]{6}$/.test(color) ? color : '#6366f1';
 
   ClassModel.create({
-    name: name.trim(), description: description?.trim() || '',
-    startTime, durationMin,
-    classType: classType || 'adult_only',
-    maxSpots: parseInt(maxSpots),
-    maxChildSpots: classType === 'adult_and_child' ? (parseInt(maxChildSpots) || 0) : 0,
-    instructor: instructor?.trim() || '',
-    childInstructor: classType === 'adult_and_child' ? (childInstructor?.trim() || '') : '',
-    category: classType === 'adult_and_child' ? 'mixed' : 'adults',
-    color: color || '#6366f1'
+    name: nameTrimmed,
+    description: String(description || '').trim().slice(0, 1000),
+    startTime,
+    durationMin,
+    classType: ct,
+    maxSpots: maxSpotsVal,
+    maxChildSpots: maxChildVal,
+    instructor: String(instructor || '').trim().slice(0, 80),
+    childInstructor: ct === 'adult_and_child' ? String(childInstructor || '').trim().slice(0, 80) : '',
+    category: ct === 'adult_and_child' ? 'mixed' : 'adults',
+    color: colorVal,
+    waitingListEnabled: !!waitingListEnabled,
+    maxWaitingSpots: 15
   });
 
   return res.redirect('/admin?success=Zajęcia+dodane+pomyślnie');
@@ -251,25 +318,66 @@ router.get('/admin/classes/:id/edit', requireAdmin, (req, res) => {
 // POST /admin/classes/:id — Aktualizuj
 // ============================================================
 router.post('/admin/classes/:id', requireAdmin, (req, res) => {
-  const { name, description, startTime, endTime, classType, maxSpots, maxChildSpots, instructor, childInstructor, color } = req.body;
-  const classData = ClassModel.getById(req.params.id);
+  const { name, description, startTime, endTime, classType, maxSpots, maxChildSpots, instructor, childInstructor, color, waitingListEnabled } = req.body;
+  const classId = parseInt(req.params.id, 10);
+  if (!Number.isInteger(classId) || classId < 1) return res.redirect('/admin?error=Nieprawidłowe+ID+zajęć');
+  const classData = ClassModel.getById(classId);
   if (!classData) return res.redirect('/admin?error=Nie+znaleziono+zajęć');
+  const instructors = UserModel.getInstructors();
+
+  const renderErr = (msg) => res.render('admin/class-form', {
+    title: `Edytuj: ${classData.name}`, classData: { ...classData, ...req.body }, user: req.user, error: msg, instructors
+  });
+
+  // Nazwa
+  const nameTrimmed = String(name || '').trim().slice(0, 120) || classData.name;
+
+  // Daty
+  const effectiveStart = startTime || classData.start_time;
+  const startDate = new Date(effectiveStart);
+  if (isNaN(startDate.getTime())) return renderErr('Nieprawidłowa data/godzina startu.');
+
+  let newDurationMin = classData.duration_min;
+  if (endTime) {
+    const endDate = new Date(endTime);
+    if (isNaN(endDate.getTime()))  return renderErr('Nieprawidłowa data/godzina końca.');
+    if (endDate <= startDate)      return renderErr('Czas końca musi być po czasie startu.');
+    newDurationMin = Math.round((endDate - startDate) / 60000);
+    if (newDurationMin < 15 || newDurationMin > 480) return renderErr('Czas trwania musi wynosić 15 min – 8 godzin.');
+  }
+
+  // Liczba miejsc
+  const maxSpotsRaw = parseInt(maxSpots, 10);
+  const maxSpotsVal = (Number.isInteger(maxSpotsRaw) && maxSpotsRaw >= 1 && maxSpotsRaw <= 200)
+    ? maxSpotsRaw : classData.max_spots;
+  if (!Number.isInteger(maxSpotsRaw) || maxSpotsRaw < 1 || maxSpotsRaw > 200)
+    return renderErr('Maks. uczestników: wartość od 1 do 200.');
 
   const ct = classType || classData.class_type;
-  const newDurationMin = endTime && startTime ? Math.max(30, Math.round((new Date(endTime) - new Date(startTime)) / 60000)) : classData.duration_min;
+  const maxChildRaw = parseInt(maxChildSpots, 10);
+  const maxChildVal = ct === 'adult_and_child'
+    ? (Number.isInteger(maxChildRaw) && maxChildRaw >= 1 && maxChildRaw <= 200 ? maxChildRaw : (classData.max_child_spots || 0))
+    : 0;
+  if (ct === 'adult_and_child' && (maxChildVal < 1 || maxChildVal > 200))
+    return renderErr('Maks. dzieci: wartość od 1 do 200.');
 
-  ClassModel.update(req.params.id, {
-    name: name?.trim() || classData.name,
-    description: description?.trim() || '',
-    startTime: startTime || classData.start_time,
+  // Kolor
+  const colorVal = /^#[0-9a-fA-F]{6}$/.test(color) ? color : (classData.color || '#6366f1');
+
+  ClassModel.update(classId, {
+    name: nameTrimmed,
+    description: String(description || '').trim().slice(0, 1000),
+    startTime: effectiveStart,
     durationMin: newDurationMin,
     classType: ct,
-    maxSpots: parseInt(maxSpots) || classData.max_spots,
-    maxChildSpots: ct === 'adult_and_child' ? (parseInt(maxChildSpots) || 0) : 0,
-    instructor: instructor?.trim() || '',
-    childInstructor: ct === 'adult_and_child' ? (childInstructor?.trim() || '') : '',
+    maxSpots: maxSpotsVal,
+    maxChildSpots: maxChildVal,
+    instructor: String(instructor || '').trim().slice(0, 80),
+    childInstructor: ct === 'adult_and_child' ? String(childInstructor || '').trim().slice(0, 80) : '',
     category: ct === 'adult_and_child' ? 'mixed' : 'adults',
-    color: color || classData.color || '#6366f1'
+    color: colorVal,
+    waitingListEnabled: !!waitingListEnabled,
+    maxWaitingSpots: classData.max_waiting_spots || 15
   });
 
   return res.redirect('/admin?success=Zajęcia+zaktualizowane');
@@ -279,7 +387,9 @@ router.post('/admin/classes/:id', requireAdmin, (req, res) => {
 // POST /admin/classes/:id/cancel
 // ============================================================
 router.post('/admin/classes/:id/cancel', requireAdmin, (req, res) => {
-  ClassModel.cancel(req.params.id);
+  const classId = parseInt(req.params.id, 10);
+  if (!Number.isInteger(classId) || classId < 1) return res.redirect('/admin?error=Nieprawidłowe+ID');
+  ClassModel.cancel(classId);
   res.redirect('/admin?success=Zajęcia+odwołane');
 });
 
@@ -287,7 +397,9 @@ router.post('/admin/classes/:id/cancel', requireAdmin, (req, res) => {
 // POST /admin/classes/:id/uncancel
 // ============================================================
 router.post('/admin/classes/:id/uncancel', requireAdmin, (req, res) => {
-  ClassModel.uncancel(req.params.id);
+  const classId = parseInt(req.params.id, 10);
+  if (!Number.isInteger(classId) || classId < 1) return res.redirect('/admin?error=Nieprawidłowe+ID');
+  ClassModel.uncancel(classId);
   res.redirect('/admin?success=Zajęcia+przywrócone+z+odwołanych');
 });
 
@@ -295,7 +407,9 @@ router.post('/admin/classes/:id/uncancel', requireAdmin, (req, res) => {
 // POST /admin/classes/:id/archive
 // ============================================================
 router.post('/admin/classes/:id/archive', requireAdmin, (req, res) => {
-  ClassModel.archive(req.params.id);
+  const classId = parseInt(req.params.id, 10);
+  if (!Number.isInteger(classId) || classId < 1) return res.redirect('/admin?error=Nieprawidłowe+ID');
+  ClassModel.archive(classId);
   res.redirect('/admin?success=Zajęcia+zarchiwizowane');
 });
 
@@ -349,6 +463,8 @@ router.get('/admin/classes/:id/attendance', requireAdmin, (req, res) => {
   res.render('admin/attendance', {
     title: `Lista: ${classData.name}`,
     classData, bookings: bookingsWithParticipants, allParticipants, user: req.user,
+    waitingList: WaitingListModel.getByClass(classData.id),
+    waitingCount: WaitingListModel.countByClass(classData.id),
     success: req.query.success || null,
     error: req.query.error || null
   });
@@ -445,6 +561,9 @@ router.post('/admin/classes/:classId/participants/:participantId/remove', requir
     // Nie blokujemy usunięcia, nawet jeśli e-mail nie poszedł
   }
 
+  // Sprawdź i przenieś pierwszą osobę z listy rezerwowej (async, nie blokuje)
+  checkAndPromoteWaitingList(classId);
+
   return res.redirect(`/admin/classes/${classId}/attendance?success=Usunięto+uczestnika:+${encodeURIComponent(participantName)}`);
 });
 
@@ -452,7 +571,8 @@ router.post('/admin/classes/:classId/participants/:participantId/remove', requir
 // POST /admin/clone-week — Klonuj zajęcia bieżącego tygodnia na następny
 // ============================================================
 router.post('/admin/clone-week', requireAdmin, (req, res) => {
-  const weeksAhead = parseInt(req.body.weeksAhead) || 1;
+  let weeksAhead = parseInt(req.body.weeksAhead, 10);
+  if (!Number.isInteger(weeksAhead) || weeksAhead < 1 || weeksAhead > 52) weeksAhead = 1;
   const daysToAdd = weeksAhead * 7;
 
   // Oblicz granice bieżącego tygodnia (poniedziałek 00:00 — niedziela 23:59)
@@ -505,7 +625,9 @@ router.post('/admin/clone-week', requireAdmin, (req, res) => {
       instructor: c.instructor || '',
       childInstructor: c.child_instructor || '',
       category: c.category || 'adults',
-      color: c.color || '#6366f1'
+      color: /^#[0-9a-fA-F]{6}$/.test(c.color) ? c.color : '#6366f1',
+      waitingListEnabled: c.waiting_list_enabled || 0,
+      maxWaitingSpots: 15
     });
     clonedCount++;
   }
@@ -516,6 +638,32 @@ router.post('/admin/clone-week', requireAdmin, (req, res) => {
 
   const weekText = weeksAhead === 1 ? 'następny tydzień' : `za ${weeksAhead} tygodnie/tygodni`;
   return res.redirect(`/admin?success=Sklonowano+${clonedCount}+zajęć+${encodeURIComponent(weekText)}`);
+});
+
+// ============================================================
+// GET /admin/classes/:id/waiting-list — Lista rezerwowa dla admina
+// ============================================================
+router.get('/admin/classes/:id/waiting-list', requireAdmin, (req, res) => {
+  const classData = ClassModel.getById(req.params.id);
+  if (!classData) return res.redirect('/admin?error=Nie+znaleziono+zajęć');
+
+  const waitingList = WaitingListModel.getByClass(classData.id);
+  const waitingCount = waitingList.length;
+
+  res.render('admin/attendance', {
+    title: `Lista rezerwowa: ${classData.name}`,
+    classData,
+    bookings: BookingModel.getByClass(classData.id).map(b => ({
+      ...b,
+      participants: BookingModel.getParticipantsByBooking(b.booking_id)
+    })),
+    allParticipants: [],
+    waitingList,
+    waitingCount,
+    user: req.user,
+    success: req.query.success || null,
+    error: req.query.error || null
+  });
 });
 
 module.exports = router;

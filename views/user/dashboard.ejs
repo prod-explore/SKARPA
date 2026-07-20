@@ -116,6 +116,51 @@
         <% } %>
       </section>
 
+      <!-- Lista rezerwowa użytkownika -->
+      <% if (typeof waitlistBookings !== 'undefined' && waitlistBookings && waitlistBookings.length > 0) { %>
+      <section class="dashboard-section">
+        <h2 class="dashboard-section-title">🕐 Lista rezerwowa</h2>
+        <div class="bookings-list">
+          <% waitlistBookings.forEach(w => { %>
+            <%
+              const wDate = new Date(w.start_time);
+              const wDateStr = wDate.toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' });
+              const wTimeStr = wDate.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
+              const wEndDate = new Date(wDate.getTime() + (w.duration_min * 60000));
+              const wEndTimeStr = wEndDate.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
+            %>
+            <div class="booking-card" style="border-left: 3px solid #f59e0b;">
+              <div class="booking-card-left">
+                <div class="booking-date-block">
+                  <span class="booking-day"><%= wDate.getDate() %></span>
+                  <span class="booking-month"><%= wDate.toLocaleDateString('pl-PL', { month: 'short' }).replace('.','') %></span>
+                </div>
+              </div>
+              <div class="booking-card-body">
+                <h3 class="booking-class-name"><%= w.name %></h3>
+                <div class="booking-meta">
+                  <span>⏰ <%= wTimeStr %> - <%= wEndTimeStr %></span>
+                  <% if (w.instructor) { %><span>👤 <%= w.instructor %></span><% } %>
+                </div>
+                <div style="margin-top:8px;">
+                  <span style="display:inline-block;background:#fef3c7;color:#92400e;font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px;border:1px solid #fde68a;">
+                    🕐 Na liście rezerwowej
+                  </span>
+                  <p style="margin:6px 0 0;font-size:13px;color:#666;">Zostaniesz powiadomiony e-mailem gdy zwolni się miejsce.</p>
+                </div>
+              </div>
+              <div class="booking-card-action">
+                <form action="/waitlist/cancel/<%= w.class_id %>" method="POST"
+                      onsubmit="return confirm('Czy na pewno chcesz wypisać się z listy rezerwowej?')">
+                  <button type="submit" class="btn btn--outline btn--sm" style="border-color:#f59e0b;color:#92400e;">Wypisz się</button>
+                </form>
+              </div>
+            </div>
+          <% }); %>
+        </div>
+      </section>
+      <% } %>
+
       <!-- Dostępne terminy — widok tygodniowy -->
       <section class="dashboard-section">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;padding-bottom:.75rem;border-bottom:2px solid var(--border);">

@@ -221,21 +221,27 @@ const ClassModel = {
 
   create: (data) =>
     getDb().prepare(`
-      INSERT INTO classes (name, description, start_time, duration_min, class_type, max_spots, max_child_spots, instructor, child_instructor, category, color)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO classes (name, description, start_time, duration_min, class_type, max_spots, max_child_spots, instructor, child_instructor, category, color, waiting_list_enabled, max_waiting_spots)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(data.name, data.description, data.startTime, data.durationMin || 90,
            data.classType || 'adult_only', data.maxSpots, data.maxChildSpots || 0,
            data.instructor, data.childInstructor || '', data.category || 'adults',
-           data.color || '#6366f1'),
+           data.color || '#6366f1',
+           data.waitingListEnabled ? 1 : 0,
+           data.maxWaitingSpots || 10),
 
   update: (id, data) =>
     getDb().prepare(`
       UPDATE classes SET name=?, description=?, start_time=?, duration_min=?,
-        class_type=?, max_spots=?, max_child_spots=?, instructor=?, child_instructor=?, category=?, color=? WHERE id=?
+        class_type=?, max_spots=?, max_child_spots=?, instructor=?, child_instructor=?, category=?, color=?,
+        waiting_list_enabled=?, max_waiting_spots=? WHERE id=?
     `).run(data.name, data.description, data.startTime, data.durationMin,
            data.classType, data.maxSpots, data.maxChildSpots || 0,
            data.instructor, data.childInstructor || '', data.category,
-           data.color || '#6366f1', id),
+           data.color || '#6366f1',
+           data.waitingListEnabled ? 1 : 0,
+           data.maxWaitingSpots || 10,
+           id),
 
   cancel: (id) =>
     getDb().prepare('UPDATE classes SET is_cancelled = 1 WHERE id = ?').run(id),
@@ -392,6 +398,49 @@ const BookingModel = {
     getDb().prepare('DELETE FROM bookings WHERE id = ?').run(bookingId)
 };
 
+const WaitingListModel = {
+  add: (userId, classId) =>
+    getDb().prepare(
+      'INSERT OR IGNORE INTO waiting_list (class_id, user_id) VALUES (?, ?)'
+    ).run(classId, userId),
+
+  remove: (userId, classId) =>
+    getDb().prepare(
+      'DELETE FROM waiting_list WHERE user_id = ? AND class_id = ?'
+    ).run(userId, classId),
+
+  findByUserAndClass: (userId, classId) =>
+    getDb().prepare(
+      'SELECT * FROM waiting_list WHERE user_id = ? AND class_id = ?'
+    ).get(userId, classId),
+
+  getFirst: (classId) =>
+    getDb().prepare(
+      'SELECT wl.*, u.email, u.first_name, u.last_name FROM waiting_list wl JOIN users u ON wl.user_id = u.id WHERE wl.class_id = ? ORDER BY wl.created_at ASC LIMIT 1'
+    ).get(classId),
+
+  getByClass: (classId) =>
+    getDb().prepare(`
+      SELECT wl.id, wl.created_at, u.email, u.first_name, u.last_name, u.id as user_id
+      FROM waiting_list wl
+      JOIN users u ON wl.user_id = u.id
+      WHERE wl.class_id = ?
+      ORDER BY wl.created_at ASC
+    `).all(classId),
+
+  countByClass: (classId) =>
+    getDb().prepare('SELECT COUNT(*) as cnt FROM waiting_list WHERE class_id = ?').get(classId).cnt,
+
+  getUserWaitlistBookings: (userId) =>
+    getDb().prepare(`
+      SELECT wl.*, c.name, c.start_time, c.duration_min, c.instructor, c.category, c.class_type, c.color
+      FROM waiting_list wl
+      JOIN classes c ON wl.class_id = c.id
+      WHERE wl.user_id = ? AND c.start_time > CURRENT_TIMESTAMP AND c.is_cancelled = 0 AND c.is_archived = 0
+      ORDER BY c.start_time ASC
+    `).all(userId)
+};
+
 const QrScanModel = {
   record: (ip, userAgent) =>
     getDb().prepare(
@@ -402,4 +451,4 @@ const QrScanModel = {
     getDb().prepare('SELECT COUNT(*) as cnt FROM qr_scans').get().cnt
 };
 
-module.exports = { initDatabase, getDb, UserModel, MagicTokenModel, ClassModel, BookingModel, QrScanModel };
+module.exports = { initDatabase, getDb, UserModel, MagicTokenModel, ClassModel, BookingModel, QrScanModel, WaitingListModel };

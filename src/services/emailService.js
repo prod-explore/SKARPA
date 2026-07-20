@@ -228,4 +228,95 @@ async function sendParticipantRemovedEmail(toEmail, participantName, className, 
   return data;
 }
 
-module.exports = { initEmailService, sendMagicLink, sendParticipantRemovedEmail };
+// ============================================================
+// E-mail: Przeniesienie z listy rezerwowej na główną
+// ============================================================
+function waitingListPromotedHTML(firstName, className, classDate, dashboardLink) {
+  return `<!DOCTYPE html>
+<html lang="pl" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Miejsce zwolniło się!</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f1f4eb;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1f4eb;padding:40px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="580" cellpadding="0" cellspacing="0" style="max-width:580px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #dde5d0;">
+        <tr>
+          <td style="background-color:#1a3a2a;padding:28px 48px;text-align:center;">
+            <h1 style="margin:0;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:20px;font-weight:900;color:#ffffff;">Fantastyczne Wspinanie</h1>
+            <p style="margin:4px 0 0;font-size:11px;color:#6b8f72;letter-spacing:1px;">System zapisów na zajęcia</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:36px 48px 32px;">
+            <h2 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#111;">&#x1F389; Miejsce zwolniło się!</h2>
+            <p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#555;">
+              Cześć <strong>${firstName}</strong>!<br><br>
+              Świetna wiadomość — zwolniło się dla Ciebie miejsce i Twój zapis z listy rezerwowej został <strong>automatycznie potwierdzony</strong>.
+            </p>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+              <tr>
+                <td style="background:#f8f9f5;border:1px solid #e4e9da;border-radius:8px;padding:16px 20px;">
+                  <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:1px;">Zajęcia</p>
+                  <p style="margin:0 0 8px;font-size:16px;font-weight:700;color:#111;">${className}</p>
+                  <p style="margin:0;font-size:14px;color:#555;">&#x1F4C5; ${classDate}</p>
+                </td>
+              </tr>
+            </table>
+            <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 28px;">
+              <tr>
+                <td style="border-radius:8px;background-color:#2d5a3d;">
+                  <a href="${dashboardLink}" target="_blank" rel="noopener noreferrer"
+                     style="display:block;padding:14px 40px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:8px;">
+                    Przejdź do panelu &rarr;
+                  </a>
+                </td>
+              </tr>
+            </table>
+            <p style="margin:0;font-size:13px;line-height:1.6;color:#777;">
+              W razie pytań skontaktuj się z nami: <a href="mailto:wspinanie.ue@gmail.com" style="color:#2d5a3d;font-weight:600;">wspinanie.ue@gmail.com</a>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#f8f9f5;border-top:1px solid #e8ece0;padding:16px 48px;text-align:center;">
+            <p style="margin:0;font-size:11px;color:#cccccc;">&#x1F1EA;&#x1F1FA; Projekt dofinansowany ze środków UE</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
+function waitingListPromotedText(firstName, className, classDate) {
+  return `Cześć ${firstName}!\n\nMiejsce zwolniło się i Twój zapis z listy rezerwowej został automatycznie potwierdzony.\n\nZajęcia: "${className}"\nData: ${classDate}\n\nZaloguj się do panelu uczestnika, aby zobaczyć szczegóły.\n\nW razie pytań: wspinanie.ue@gmail.com\n\n-- Fantastyczne Wspinanie`;
+}
+
+async function sendWaitingListPromotedEmail(toEmail, firstName, className, classDate, dashboardLink) {
+  const client = getResend();
+  const { data, error } = await client.emails.send({
+    from:     FROM_ADDRESS,
+    to:       [toEmail],
+    reply_to: REPLY_TO,
+    subject:  `Miejsce zwolniło się! Twój zapis potwierdzony — ${APP_NAME}`,
+    html: waitingListPromotedHTML(firstName, className, classDate, dashboardLink),
+    text: waitingListPromotedText(firstName, className, classDate),
+    headers: {
+      'X-Entity-Ref-ID': `waitlist-promoted-${Date.now()}`,
+      'Precedence':      'transactional'
+    }
+  });
+
+  if (error) {
+    console.error('Resend error (waitlist promoted):', error);
+    throw new Error(error.message);
+  }
+  console.log(`✉️  Waitlist promoted -> ${toEmail} (id: ${data?.id})`);
+  return data;
+}
+
+module.exports = { initEmailService, sendMagicLink, sendParticipantRemovedEmail, sendWaitingListPromotedEmail };
